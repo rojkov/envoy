@@ -200,6 +200,9 @@ def envoy_dependencies(skip_targets = []):
     _com_google_protobuf()
     _com_github_envoyproxy_sqlparser()
     _com_googlesource_quiche()
+    _com_intel_qat()
+    _org_freedesktop_systemd()
+    _org_kernel_util_linux()
 
     # Used for bundling gcovr into a relocatable .par file.
     _repository_impl("subpar")
@@ -429,6 +432,41 @@ def _com_google_googletest():
     native.bind(
         name = "googletest",
         actual = "@com_google_googletest//:gtest",
+    )
+
+def _com_intel_qat():
+    _repository_impl(
+        name ="com_intel_qat",
+        build_file = "@envoy//bazel/external:qat.BUILD",
+        patches = [
+                "@envoy//bazel/external:0001-Add-extern-C-to-icp_sal_user.h.patch",
+                "@envoy//bazel/external:0001-cpa_types-do-not-define-TRUE-and-FALSE.patch",
+        ],
+        patch_args = ["-p1"],
+    )
+    native.bind(
+        name = "qat",
+        actual = "@com_intel_qat//:qat",
+    )
+
+def _org_freedesktop_systemd():
+    _repository_impl(
+        name ="org_freedesktop_systemd",
+        build_file = "@envoy//bazel/external:udev.BUILD",
+    )
+    native.bind(
+        name = "udev",
+        actual = "@org_freedesktop_systemd//:udev",
+    )
+
+def _org_kernel_util_linux():
+    _repository_impl(
+        name ="org_kernel_util_linux",
+        build_file = "@envoy//bazel/external:util_linux.BUILD",
+    )
+    native.bind(
+        name = "mount",
+        actual = "@kernel_util_linux//:mount",
     )
 
 # TODO(jmarantz): replace the use of bind and external_deps with just

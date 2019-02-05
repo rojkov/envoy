@@ -1,0 +1,80 @@
+From 2ee0db9d356bed280edfb49794fd5d0bb9002d5f Mon Sep 17 00:00:00 2001
+From: Ismo Puustinen <ismo.puustinen@intel.com>
+Date: Tue, 11 Dec 2018 12:58:14 +0200
+Subject: [PATCH] cpa_types: do not define TRUE and FALSE.
+
+---
+ quickassist/include/cpa_types.h               | 19 ++-----------------
+ .../src/common/crypto/sym/lac_sym_alg_chain.c | 12 ++++++------
+ 2 files changed, 8 insertions(+), 23 deletions(-)
+
+diff --git a/quickassist/include/cpa_types.h b/quickassist/include/cpa_types.h
+index 09fdda7..f3f5302 100644
+--- a/quickassist/include/cpa_types.h
++++ b/quickassist/include/cpa_types.h
+@@ -180,21 +180,6 @@ typedef int64_t Cpa64S;
+  * NULL definition. */
+ #endif
+ 
+-#ifndef TRUE
+-#define TRUE (1==1)
+-/**<
+- * @file cpa_types.h
+- * @ingroup cpa_Types
+- * True value definition. */
+-#endif
+-#ifndef FALSE
+-#define FALSE (0==1)
+-/**<
+- * @file cpa_types.h
+- * @ingroup cpa_Types
+- * False value definition. */
+-#endif
+-
+ /**
+  *****************************************************************************
+  * @file cpa_types.h
+@@ -208,8 +193,8 @@ typedef int64_t Cpa64S;
+  *****************************************************************************/
+ typedef enum _CpaBoolean
+ {
+-    CPA_FALSE = FALSE, /**< False value */
+-    CPA_TRUE = TRUE /**< True value */
++    CPA_FALSE = (0==1), /**< False value */
++    CPA_TRUE = (1==1) /**< True value */
+ } CpaBoolean;
+ 
+ 
+diff --git a/quickassist/lookaside/access_layer/src/common/crypto/sym/lac_sym_alg_chain.c b/quickassist/lookaside/access_layer/src/common/crypto/sym/lac_sym_alg_chain.c
+index 0423577..3a5b0e5 100644
+--- a/quickassist/lookaside/access_layer/src/common/crypto/sym/lac_sym_alg_chain.c
++++ b/quickassist/lookaside/access_layer/src/common/crypto/sym/lac_sym_alg_chain.c
+@@ -1196,19 +1196,19 @@ CpaStatus LacAlgChain_SessionInit(
+     switch (pSessionDesc->symOperation)
+     {
+         case CPA_CY_SYM_OP_CIPHER:
+-            pSessionDesc->isCipher = TRUE;
+-            pSessionDesc->isAuth = FALSE;
++            pSessionDesc->isCipher = CPA_TRUE;
++            pSessionDesc->isAuth = CPA_FALSE;
+             pSessionDesc->isAuthEncryptOp = CPA_FALSE;
+             break;
+         case CPA_CY_SYM_OP_HASH:
+-            pSessionDesc->isCipher = FALSE;
+-            pSessionDesc->isAuth = TRUE;
++            pSessionDesc->isCipher = CPA_FALSE;
++            pSessionDesc->isAuth = CPA_TRUE;
+             pSessionDesc->isAuthEncryptOp = CPA_FALSE;
+ 
+             break;
+         case CPA_CY_SYM_OP_ALGORITHM_CHAINING:
+-            pSessionDesc->isCipher = TRUE;
+-            pSessionDesc->isAuth = TRUE;
++            pSessionDesc->isCipher = CPA_TRUE;
++            pSessionDesc->isAuth = CPA_TRUE;
+ 
+             {
+                 /* set up some useful shortcuts */
+-- 
+2.19.2
+

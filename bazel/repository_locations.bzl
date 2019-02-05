@@ -240,4 +240,18 @@ REPOSITORY_LOCATIONS = dict(
         sha256 = "2cf9f5ea62a03ca0d8773fe4f56949b72c28ac5b1bcf43d850a571f4e32add2a",
         urls = ["https://storage.googleapis.com/quiche-envoy-integration/4fbea5de9afdf30611b27afd54c45a596944f9c2.tar.gz"],
     ),
+    com_intel_qat = dict(
+        sha256 = "ca76d7f51faf6f5a7c7288c4fc724125b91f0a3c155126ef1a12b697eff3ff7a",
+        urls = ["https://01.org/sites/default/files/downloads/intelr-quickassist-technology/qat1.7.l.4.3.0-00033.tar.gz"],
+    ),
+    org_freedesktop_systemd = dict(
+        sha256 = "8f15aec1ac926e13a21a04d0ca3fe371f7004951448142a6f8952075c5b5f0b5",
+        strip_prefix = "systemd-240",
+        urls = ["https://github.com/systemd/systemd/archive/v240.tar.gz"],
+    ),
+    org_kernel_util_linux = dict(
+        sha256 = "952fb0d3498e81bd67b3c48e283c80cb12c719bc2357ec5801e7d420991ad319",
+        strip_prefix = "util-linux-2.33",
+        urls = ["https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.tar.gz"],
+    ),
 )

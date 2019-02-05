@@ -83,7 +83,8 @@ def envoy_copts(repository, test = False):
                "//conditions:default": [],
            }) + envoy_select_hot_restart(["-DENVOY_HOT_RESTART"], repository) + \
            envoy_select_perf_annotation(["-DENVOY_PERF_ANNOTATION"]) + \
-           envoy_select_google_grpc(["-DENVOY_GOOGLE_GRPC"], repository)
+           envoy_select_google_grpc(["-DENVOY_GOOGLE_GRPC"], repository) + \
+           [ "-I external/com_intel_qat/quickassist/include" ]
 
 def envoy_static_link_libstdcpp_linkopts():
     return envoy_select_force_libcpp(
@@ -331,6 +332,7 @@ def envoy_cc_library(
             envoy_external_dep_path("abseil_strings"),
             envoy_external_dep_path("spdlog"),
             envoy_external_dep_path("fmtlib"),
+            envoy_external_dep_path("qat"),
         ],
         include_prefix = envoy_include_prefix(native.package_name()),
         alwayslink = 1,

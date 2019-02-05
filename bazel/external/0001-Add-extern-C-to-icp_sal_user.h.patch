@@ -1,0 +1,89 @@
+From 776b9efaaf76298c4f0a9f59ebfc52127f1a4d94 Mon Sep 17 00:00:00 2001
+From: Ismo Puustinen <ismo.puustinen@intel.com>
+Date: Wed, 7 Nov 2018 14:47:41 +0200
+Subject: [PATCH] Add "extern C" to several headers.
+
+Make sure that icp_sal__{user,poll}.h and qae_mem.h have C linkage to
+make the C++ linker find the corresponding symbols from the object
+files.
+---
+ quickassist/lookaside/access_layer/include/icp_sal_poll.h | 8 ++++++++
+ quickassist/lookaside/access_layer/include/icp_sal_user.h | 8 ++++++++
+ quickassist/utilities/libusdm_drv/qae_mem.h               | 8 ++++++++
+ 3 files changed, 24 insertions(+)
+
+diff --git a/quickassist/lookaside/access_layer/include/icp_sal_poll.h b/quickassist/lookaside/access_layer/include/icp_sal_poll.h
+index cedf1d5..1351015 100644
+--- a/quickassist/lookaside/access_layer/include/icp_sal_poll.h
++++ b/quickassist/lookaside/access_layer/include/icp_sal_poll.h
+@@ -81,6 +81,10 @@
+ #ifndef ICP_SAL_POLL_H
+ #define ICP_SAL_POLL_H
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
++
+ /*************************************************************************
+  * @ingroup SalPoll
+  * @description
+@@ -469,4 +473,8 @@ CpaStatus icp_sal_DcPutFileDescriptor(CpaInstanceHandle instanceHandle, int fd);
+  *****************************************************************************/
+ CpaStatus icp_sal_CyPutFileDescriptor(CpaInstanceHandle instanceHandle, int fd);
+ 
++#ifdef __cplusplus
++} /* close the extern "C" { */
++#endif
++
+ #endif
+diff --git a/quickassist/lookaside/access_layer/include/icp_sal_user.h b/quickassist/lookaside/access_layer/include/icp_sal_user.h
+index 4c7b4a7..6e571bb 100644
+--- a/quickassist/lookaside/access_layer/include/icp_sal_user.h
++++ b/quickassist/lookaside/access_layer/include/icp_sal_user.h
+@@ -74,6 +74,10 @@
+ #ifndef ICP_SAL_USER_H
+ #define ICP_SAL_USER_H
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
++
+ #include "icp_sal.h"
+ 
+ /*************************************************************************
+@@ -722,4 +726,8 @@ CpaStatus icp_sal_userGetPfVfcommsStatus(CpaBoolean *unreadMessage);
+  */
+ CpaStatus icp_sal_reset_device(Cpa32U accelId);
+ 
++#ifdef __cplusplus
++} /* close the extern "C" { */
++#endif
++
+ #endif
+diff --git a/quickassist/utilities/libusdm_drv/qae_mem.h b/quickassist/utilities/libusdm_drv/qae_mem.h
+index f33ada0..6cfee25 100644
+--- a/quickassist/utilities/libusdm_drv/qae_mem.h
++++ b/quickassist/utilities/libusdm_drv/qae_mem.h
+@@ -70,6 +70,10 @@
+ #ifndef QAE_MEM_H_
+ #define QAE_MEM_H_
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
++
+ #ifdef __KERNEL__
+ #ifdef __FREEBSD__
+ #include <sys/types.h>
+@@ -216,4 +220,8 @@ uint64_t qaeVirtToPhysNUMA(void *pVirtAddr);
+ void qaeAtFork(void);
+ #endif
+ 
++#ifdef __cplusplus
++} /* close the extern "C" { */
++#endif
++
+ #endif /* #ifndef QAE_MEM_H_ */
+-- 
+2.19.2
+
