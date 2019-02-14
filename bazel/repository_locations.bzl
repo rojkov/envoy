@@ -244,14 +244,4 @@ REPOSITORY_LOCATIONS = dict(
         sha256 = "ca76d7f51faf6f5a7c7288c4fc724125b91f0a3c155126ef1a12b697eff3ff7a",
         urls = ["https://01.org/sites/default/files/downloads/intelr-quickassist-technology/qat1.7.l.4.3.0-00033.tar.gz"],
     ),
-    org_freedesktop_systemd = dict(
-        sha256 = "8f15aec1ac926e13a21a04d0ca3fe371f7004951448142a6f8952075c5b5f0b5",
-        strip_prefix = "systemd-240",
-        urls = ["https://github.com/systemd/systemd/archive/v240.tar.gz"],
-    ),
-    org_kernel_util_linux = dict(
-        sha256 = "952fb0d3498e81bd67b3c48e283c80cb12c719bc2357ec5801e7d420991ad319",
-        strip_prefix = "util-linux-2.33",
-        urls = ["https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.tar.gz"],
-    ),
 )
