@@ -331,7 +331,6 @@ def envoy_cc_library(
             envoy_external_dep_path("abseil_strings"),
             envoy_external_dep_path("spdlog"),
             envoy_external_dep_path("fmtlib"),
-            envoy_external_dep_path("qat"),
         ],
         include_prefix = envoy_include_prefix(native.package_name()),
         alwayslink = 1,
