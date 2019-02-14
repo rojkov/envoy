@@ -113,7 +113,7 @@ cc_library(
                 "quickassist/lookaside/access_layer/include/*.h",
                 ]),
         copts = QAT_INCLUDE_PATHS + QAT_DEFINES,
-        deps = [ ":osal", ":usdm_user", ":qat_direct", "@org_freedesktop_systemd//:udev" ],
+        deps = [ ":osal", ":usdm_user", ":qat_direct" ],
         visibility = ["//visibility:public"],
         # linkstatic = True,
         alwayslink = True,

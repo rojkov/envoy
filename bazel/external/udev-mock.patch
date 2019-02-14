@@ -1,0 +1,404 @@
+commit 80548a460647557b2fdcead7dd65bf2373712208
+Author: Dmitry Rozhkov <dmitry.rozhkov@linux.intel.com>
+Date:   Wed Feb 13 17:24:22 2019 +0200
+
+    add mocked implementation of libudev interface
+
+diff --git a/quickassist/lookaside/access_layer/src/qat_direct/src/adf_process_proxy.c b/quickassist/lookaside/access_layer/src/qat_direct/src/adf_process_proxy.c
+index 74689c5..cc0b575 100644
+--- a/quickassist/lookaside/access_layer/src/qat_direct/src/adf_process_proxy.c
++++ b/quickassist/lookaside/access_layer/src/qat_direct/src/adf_process_proxy.c
+@@ -52,7 +52,7 @@
+ #include <fcntl.h>
+ #include <errno.h>
+ #include <pthread.h>
+-#include <libudev.h>
++#include "libudev_mock.h"
+ 
+ #include "cpa.h"
+ #include "icp_accel_devices.h"
+diff --git a/quickassist/lookaside/access_layer/src/qat_direct/src/libudev_mock.h b/quickassist/lookaside/access_layer/src/qat_direct/src/libudev_mock.h
+new file mode 100644
+index 0000000..8b0fd45
+--- /dev/null
++++ b/quickassist/lookaside/access_layer/src/qat_direct/src/libudev_mock.h
+@@ -0,0 +1,76 @@
++/*****************************************************************************
++ *
++ *   BSD LICENSE
++ *
++ *   Copyright(c) 2019 Intel Corporation. All rights reserved.
++ *   All rights reserved.
++ *
++ *   Redistribution and use in source and binary forms, with or without
++ *   modification, are permitted provided that the following conditions
++ *   are met:
++ *
++ *     * Redistributions of source code must retain the above copyright
++ *       notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *       notice, this list of conditions and the following disclaimer in
++ *       the documentation and/or other materials provided with the
++ *       distribution.
++ *     * Neither the name of Intel Corporation nor the names of its
++ *       contributors may be used to endorse or promote products derived
++ *       from this software without specific prior written permission.
++ *
++ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ *****************************************************************************/
++
++struct udev;
++struct udev_device;
++struct udev_monitor;
++
++struct udev *udev_new(void);
++
++struct udev *udev_unref(struct udev *udev);
++
++struct udev_monitor *udev_monitor_new_from_netlink(struct udev *udev,
++                                                   const char *name);
++
++struct udev_monitor *udev_monitor_ref(struct udev_monitor *udev_monitor);
++
++struct udev_monitor *udev_monitor_unref(struct udev_monitor *mon);
++
++int udev_monitor_filter_add_match_subsystem_devtype(
++    struct udev_monitor *udev_monitor, const char *subsystem,
++    const char *devtype);
++
++int udev_monitor_enable_receiving(struct udev_monitor *udev_monitor);
++
++struct udev_device *udev_device_unref(struct udev_device *udev_device);
++
++struct udev_device *
++udev_device_new_from_subsystem_sysname(struct udev *udev, const char *subsystem,
++                                       const char *sysname);
++
++struct udev *udev_device_get_udev(struct udev_device *udev_device);
++
++int udev_monitor_get_fd(struct udev_monitor *udev_monitor);
++
++struct udev_device *
++udev_monitor_receive_device(struct udev_monitor *udev_monitor);
++
++const char *udev_device_get_sysattr_value(struct udev_device *udev_device,
++                                          const char *sysattr);
++
++const char *udev_device_get_property_value(struct udev_device *udev_device,
++                                           const char *key);
++
++const char *udev_device_get_syspath(struct udev_device *udev_device);
+diff --git a/quickassist/lookaside/access_layer/src/qat_direct/src/udev_mock.c b/quickassist/lookaside/access_layer/src/qat_direct/src/udev_mock.c
+new file mode 100644
+index 0000000..be5ca28
+--- /dev/null
++++ b/quickassist/lookaside/access_layer/src/qat_direct/src/udev_mock.c
+@@ -0,0 +1,284 @@
++/*****************************************************************************
++ *
++ *   BSD LICENSE
++ *
++ *   Copyright(c) 2019 Intel Corporation. All rights reserved.
++ *   All rights reserved.
++ *
++ *   Redistribution and use in source and binary forms, with or without
++ *   modification, are permitted provided that the following conditions
++ *   are met:
++ *
++ *     * Redistributions of source code must retain the above copyright
++ *       notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *       notice, this list of conditions and the following disclaimer in
++ *       the documentation and/or other materials provided with the
++ *       distribution.
++ *     * Neither the name of Intel Corporation nor the names of its
++ *       contributors may be used to endorse or promote products derived
++ *       from this software without specific prior written permission.
++ *
++ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ *****************************************************************************/
++
++#include "icp_platform.h"
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++
++static const char *dev_dir = "/sys/bus/pci/devices/";
++
++struct udev {
++  unsigned n_ref;
++};
++
++struct udev_device {
++  struct udev *udev;
++
++  unsigned n_ref;
++  char *syspath;
++  char *last_sysattr_value;
++};
++
++struct udev_monitor {
++  unsigned n_ref;
++};
++
++struct udev *udev_new(void) {
++  struct udev *udev;
++
++  udev = malloc(sizeof(struct udev));
++  if (!udev) {
++    ADF_ERROR("Can't create mocked udev\n");
++    return NULL;
++  }
++  memset(udev, '\0', sizeof(*udev));
++
++  *udev = (struct udev){
++      .n_ref = 1,
++  };
++
++  ADF_DEBUG("mock udev=%p\n", udev);
++  return udev;
++}
++
++struct udev *udev_unref(struct udev *udev) {
++  ADF_DEBUG("(udev=%p)\n", udev);
++  if (!udev)
++    return NULL;
++
++  ADF_DEBUG("udev=%p n_ref=%d\n", udev, udev->n_ref);
++
++  assert(udev->n_ref > 0);
++  udev->n_ref--;
++  if (udev->n_ref > 0)
++    return udev;
++
++  free(udev);
++  udev = NULL;
++  return NULL;
++}
++
++struct udev_monitor *udev_monitor_new_from_netlink(struct udev *udev,
++                                                   const char *name) {
++  struct udev_monitor *mon;
++
++  mon = malloc(sizeof(struct udev_monitor));
++  if (!mon) {
++    ADF_ERROR("Can't create mocked udev_monitor\n");
++    return NULL;
++  }
++  memset(mon, '\0', sizeof(*mon));
++
++  *mon = (struct udev_monitor){
++      .n_ref = 1,
++  };
++
++  ADF_DEBUG("mock udev_monitor=%p\n", mon);
++  return mon;
++}
++
++struct udev_monitor *udev_monitor_ref(struct udev_monitor *udev_monitor) {
++  ADF_DEBUG("mock\n");
++  return NULL;
++}
++
++struct udev_monitor *udev_monitor_unref(struct udev_monitor *mon) {
++  ADF_DEBUG("(udev_monitor=%p)\n", mon);
++  if (!mon)
++    return NULL;
++  ADF_DEBUG("udev_monitor=%p n_ref=%d\n", mon, mon->n_ref);
++
++  assert(mon->n_ref > 0);
++  mon->n_ref--;
++  if (mon->n_ref > 0)
++    return mon;
++
++  free(mon);
++  mon = NULL;
++  return NULL;
++}
++
++int udev_monitor_filter_add_match_subsystem_devtype(
++    struct udev_monitor *udev_monitor, const char *subsystem,
++    const char *devtype) {
++  ADF_DEBUG("mock\n");
++  return 0;
++}
++
++int udev_monitor_enable_receiving(struct udev_monitor *udev_monitor) {
++  ADF_DEBUG("mock\n");
++  return 0;
++}
++
++struct udev_device *udev_device_unref(struct udev_device *udev_device) {
++  ADF_DEBUG("(udev_device=%p)\n", udev_device);
++  if (!udev_device)
++    return NULL;
++
++  ADF_DEBUG("udev_device=%p n_ref=%d\n", udev_device, udev_device->n_ref);
++
++  assert(udev_device->n_ref > 0);
++  udev_device->n_ref--;
++  if (udev_device->n_ref > 0)
++    return udev_device;
++
++  free(udev_device);
++  free(udev_device->syspath);
++  free(udev_device->last_sysattr_value);
++  udev_device = NULL;
++  return NULL;
++}
++
++struct udev_device *
++udev_device_new_from_subsystem_sysname(struct udev *udev, const char *subsystem,
++                                       const char *sysname) {
++  struct udev_device *udev_device;
++
++  udev_device = malloc(sizeof(struct udev_device));
++  if (!udev_device) {
++    ADF_ERROR("No mem for new udev_device\n");
++    return NULL;
++  }
++  memset(udev_device, '\0', sizeof(*udev_device));
++
++  *udev_device = (struct udev_device){
++      .n_ref = 1,
++      .udev = udev,
++  };
++
++  size_t syspath_size = strlen(dev_dir) + strlen(sysname) + 1;
++  char *syspath = malloc(syspath_size);
++  if (syspath == NULL) {
++    ADF_ERROR("No mem for syspath\n");
++    return NULL;
++  }
++
++  int size = snprintf(syspath, syspath_size, "%s%s", dev_dir, sysname);
++  if (size < 0 || size >= syspath_size) {
++    ADF_ERROR("Can't set syspath\n");
++    return NULL;
++  }
++
++  if (access(syspath, F_OK) < 0) {
++    ADF_ERROR("Can't access device %s\n", syspath);
++    return NULL;
++  }
++
++  udev_device->syspath = syspath;
++  ADF_DEBUG("mock udev_device_new_from_subsystem_sysname(udev=%p, "
++            "subsystem='%s', sysname='%s') return udev_device=%p\n",
++            udev, subsystem, sysname, udev_device);
++  return udev_device;
++}
++
++struct udev *udev_device_get_udev(struct udev_device *udev_device) {
++  ADF_DEBUG("mock udev_device=%p, return udev=%p\n", udev_device,
++            udev_device->udev);
++  return udev_device->udev;
++}
++
++int udev_monitor_get_fd(struct udev_monitor *udev_monitor) {
++  ADF_DEBUG("mock\n");
++  return 0;
++}
++
++struct udev_device *
++udev_monitor_receive_device(struct udev_monitor *udev_monitor) {
++  ADF_DEBUG("mock\n");
++  return NULL;
++}
++
++const char *udev_device_get_sysattr_value(struct udev_device *udev_device,
++                                          const char *sysattr) {
++  FILE *fp;
++  char *output = NULL;
++  char *sysattr_path;
++
++  free(udev_device->last_sysattr_value);
++  udev_device->last_sysattr_value = NULL;
++
++  size_t path_size = strlen(udev_device->syspath) + strlen(sysattr) + 2;
++  sysattr_path = malloc(path_size);
++  if (sysattr_path == NULL) {
++    ADF_ERROR("No mem\n");
++    return NULL;
++  }
++
++  int size =
++      snprintf(sysattr_path, path_size, "%s/%s", udev_device->syspath, sysattr);
++  if (size < 0 || size >= path_size) {
++    ADF_ERROR("Can't set sysattr path\n");
++    return NULL;
++  }
++
++  ADF_DEBUG("mocked udev_device_get_sysattr_value(udev_device=%p, sysattr=%s) "
++            "sysattr_path=%s\n",
++            udev_device, sysattr, sysattr_path);
++  fp = fopen(sysattr_path, "r");
++  if (fp == NULL) {
++    ADF_DEBUG("Can't open %s\n", sysattr_path);
++    goto error;
++  }
++
++  if (fscanf(fp, "%m[^\n]", &output) == EOF) {
++    ADF_ERROR("Can't read sysattr\n");
++    fclose(fp);
++    goto error;
++  }
++
++  fclose(fp);
++  ADF_DEBUG("Read '%s' from %s\n", output, sysattr);
++  /* do bookkeeping to avoid memleaks */
++  udev_device->last_sysattr_value = output;
++  free(sysattr_path);
++  return output;
++
++error:
++  free(sysattr_path);
++  return NULL;
++}
++
++const char *udev_device_get_property_value(struct udev_device *udev_device,
++                                           const char *key) {
++  ADF_DEBUG("mocked udev_device_get_property_value(udev_device=%p, key=%s)\n",
++            udev_device, key);
++  return "fake property value";
++}
++
++const char *udev_device_get_syspath(struct udev_device *udev_device) {
++  ADF_DEBUG("return syspath=%s\n", udev_device->syspath);
++  return udev_device->syspath;
++}
+diff --git a/quickassist/lookaside/access_layer/src/qat_direct/src/uio_user_utils.c b/quickassist/lookaside/access_layer/src/qat_direct/src/uio_user_utils.c
+index eff5f71..c05ec7a 100644
+--- a/quickassist/lookaside/access_layer/src/qat_direct/src/uio_user_utils.c
++++ b/quickassist/lookaside/access_layer/src/qat_direct/src/uio_user_utils.c
+@@ -40,7 +40,7 @@
+ #include <fcntl.h>
+ #include <errno.h>
+ #include <unistd.h>
+-#include <libudev.h>
++#include "libudev_mock.h"
+ 
+ #include "cpa.h"
+ #include "uio_user_utils.h"
