@@ -83,8 +83,7 @@ def envoy_copts(repository, test = False):
                "//conditions:default": [],
            }) + envoy_select_hot_restart(["-DENVOY_HOT_RESTART"], repository) + \
            envoy_select_perf_annotation(["-DENVOY_PERF_ANNOTATION"]) + \
-           envoy_select_google_grpc(["-DENVOY_GOOGLE_GRPC"], repository) + \
-           [ "-I external/com_intel_qat/quickassist/include" ]
+           envoy_select_google_grpc(["-DENVOY_GOOGLE_GRPC"], repository)
 
 def envoy_static_link_libstdcpp_linkopts():
     return envoy_select_force_libcpp(
