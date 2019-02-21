@@ -114,6 +114,7 @@ cc_library(
                 ]),
         copts = QAT_INCLUDE_PATHS + QAT_DEFINES,
         deps = [ ":osal", ":usdm_user", ":qat_direct" ],
+        includes = ["quickassist/include"],
         visibility = ["//visibility:public"],
         # linkstatic = True,
         alwayslink = True,
