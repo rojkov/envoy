@@ -1,0 +1,43 @@
+From 189f6ed8e40946d27beb34166149f6145437a2a3 Mon Sep 17 00:00:00 2001
+From: Ismo Puustinen <ismo.puustinen@intel.com>
+Date: Wed, 6 Mar 2019 11:35:38 +0200
+Subject: [PATCH] Fix openssl header include paths.
+
+---
+ .../utilities/osal/src/linux/user_space/openssl/crypto.h  | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/quickassist/utilities/osal/src/linux/user_space/openssl/crypto.h b/quickassist/utilities/osal/src/linux/user_space/openssl/crypto.h
+index b9ee95b..dba00c9 100644
+--- a/quickassist/utilities/osal/src/linux/user_space/openssl/crypto.h
++++ b/quickassist/utilities/osal/src/linux/user_space/openssl/crypto.h
+@@ -73,14 +73,14 @@
+ #  include <stdio.h>
+ # endif
+ 
+-# include <openssl/stack.h>
+-# include <openssl/safestack.h>
++# include "stack.h"
++# include "safestack.h"
+ # include "opensslv.h"
+ # include "ossl_typ.h"
+ # include "opensslconf.h"
+ 
+ # ifdef CHARSET_EBCDIC
+-#  include <openssl/ebcdic.h>
++#  include "ebcdic.h"
+ # endif
+ 
+ /*
+@@ -90,7 +90,7 @@
+ # include "symhacks.h"
+ 
+ # if OPENSSL_API_COMPAT < 0x10100000L
+-#  include <openssl/opensslv.h>
++#  include "opensslv.h"
+ # endif
+ 
+ #ifdef  __cplusplus
+-- 
+2.20.1
+

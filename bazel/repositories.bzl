@@ -437,9 +437,10 @@ def _com_intel_qat():
         name ="com_intel_qat",
         build_file = "@envoy//bazel/external:qat.BUILD",
         patches = [
-                "@envoy//bazel/external:0001-Add-extern-C-to-icp_sal_user.h.patch",
-                "@envoy//bazel/external:0001-cpa_types-do-not-define-TRUE-and-FALSE.patch",
-                "@envoy//bazel/external:udev-mock.patch",
+          "@envoy//bazel/external:0001-Add-extern-C-to-icp_sal_user.h.patch",
+          "@envoy//bazel/external:0001-cpa_types-do-not-define-TRUE-and-FALSE.patch",
+          "@envoy//bazel/external:0001-Fix-openssl-header-include-paths.patch",
+          "@envoy//bazel/external:udev-mock.patch",
         ],
         patch_args = ["-p1"],
     )
