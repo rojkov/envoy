@@ -15,6 +15,11 @@ REPOSITORY_LOCATIONS = dict(
         # fips-20180730
         urls = ["https://commondatastorage.googleapis.com/chromium-boringssl-docs/fips/boringssl-66005f41fbc3529ffe8d007708756720529da20d.tar.xz"],
     ),
+    com_github_openssl = dict(
+        sha256 = "d6418b0e1e39ef058b630e248bbb3b04241d6fad57bdb86db0b338c2374bda80",
+        strip_prefix = "openssl-OpenSSL_1_1_1b",
+        urls = ["https://github.com/openssl/openssl/archive/OpenSSL_1_1_1b.tar.gz"],
+    ),
     com_google_absl = dict(
         sha256 = "e35082e88b9da04f4d68094c05ba112502a5063712f3021adfa465306d238c76",
         strip_prefix = "abseil-cpp-cc8dcd307b76a575d2e3e0958a4fe4c7193c2f68",
