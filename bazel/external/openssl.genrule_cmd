@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+# Bazel magic.
+# ROOT=external/openssl/openssl-OpenSSL_1_1_1b
+ROOT=$$(dirname $(execpath openssl-OpenSSL_1_1_1b/NOTES.ANDROID))
+pushd $$ROOT
+
+echo "Installing into $$(pwd)/install"
+./config --prefix=$$(pwd)/install 2>&1
+make -j$$(nproc)
+make install
+
+# Move compiled libraries to the expected destinations.
+popd
+INSTALL_ROOT=$$(dirname $$(dirname $(location lib/libssl.a)))
+echo "Envoy install root $$INSTALL_ROOT and PWD is $$(pwd)"
+rm -rf $$INSTALL_ROOT/include
+rm -rf $$INSTALL_ROOT/lib
+mkdir -p $$INSTALL_ROOT
+mv $$ROOT/install/include $$INSTALL_ROOT/
+mv $$ROOT/install/lib $$INSTALL_ROOT/

@@ -162,8 +162,10 @@ def envoy_dependencies(skip_targets = []):
     # Binding to an alias pointing to the selected version of BoringSSL:
     # - BoringSSL FIPS from @boringssl_fips//:ssl,
     # - non-FIPS BoringSSL from @boringssl//:ssl.
+    # - OpenSSL from @openssl//:ssl.
     _boringssl()
     _boringssl_fips()
+    _openssl()
     native.bind(
         name = "ssl",
         actual = "@envoy//bazel:boringssl",
@@ -220,6 +222,16 @@ def _boringssl_fips():
         sha256 = location["sha256"],
         genrule_cmd_file = "@envoy//bazel/external:boringssl_fips.genrule_cmd",
         build_file = "@envoy//bazel/external:boringssl_fips.BUILD",
+    )
+
+def _openssl():
+    location = REPOSITORY_LOCATIONS["com_github_openssl"]
+    genrule_repository(
+        name = "openssl",
+        urls = location["urls"],
+        sha256 = location["sha256"],
+        genrule_cmd_file = "@envoy//bazel/external:openssl.genrule_cmd",
+        build_file = "@envoy//bazel/external:openssl.BUILD",
     )
 
 def _com_github_circonus_labs_libcircllhist():
