@@ -262,11 +262,13 @@ def envoy_dependencies(path = "@envoy_deps//", skip_targets = []):
     # Binding to an alias pointing to the selected version of BoringSSL:
     # - BoringSSL FIPS from @boringssl_fips//:ssl,
     # - non-FIPS BoringSSL from @boringssl//:ssl.
+    # - OpenSSL from @com_github_openssl//:ssl.
     _boringssl()
     _boringssl_fips()
+    _com_github_openssl()
     native.bind(
         name = "ssl",
-        actual = "@envoy//bazel:boringssl",
+        actual = "@com_github_openssl//:ssl",
     )
 
     # The long repo names (`com_github_fmtlib_fmt` instead of `fmtlib`) are
@@ -318,6 +320,16 @@ def _boringssl_fips():
         sha256 = location["sha256"],
         genrule_cmd_file = "@envoy//bazel/external:boringssl_fips.genrule_cmd",
         build_file = "@envoy//bazel/external:boringssl_fips.BUILD",
+    )
+
+def _com_github_openssl():
+    location = REPOSITORY_LOCATIONS["com_github_openssl"]
+    genrule_repository(
+        name = "com_github_openssl",
+        urls = location["urls"],
+        sha256 = location["sha256"],
+        genrule_cmd_file = "@envoy//bazel/external:openssl.genrule_cmd",
+        build_file = "@envoy//bazel/external:openssl.BUILD",
     )
 
 def _com_github_circonus_labs_libcircllhist():

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -e
+
+# Bazel magic.
+echo "**********"
+pwd
+ls
+echo "^^^^^^^^^^^"
+ls external/com_github_openssl
+echo "^^^^^^^^^^^2"
+
+ROOT=external/com_github_openssl/openssl-OpenSSL_1_1_1b
+pushd $$ROOT
+
+./config
+make -j$$(nproc)
+
+# Move compiled libraries to the expected destinations.
+popd
+mv $$ROOT/openssl/build/crypto/libcrypto.a $(execpath crypto/libcrypto.a)
+mv $$ROOT/openssl/build/ssl/libssl.a $(execpath ssl/libssl.so)
