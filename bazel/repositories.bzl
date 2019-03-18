@@ -11,6 +11,7 @@ load("@bazel_tools//tools/cpp:lib_cc_configure.bzl", "get_env_var")
 
 # dict of {build recipe name: longform extension name,}
 PPC_SKIP_TARGETS = {"luajit": "envoy.filters.http.lua"}
+OPENSSL_SKIP_TARGETS = {"jwt_authn": "envoy.filters.http.jwt_authn"}
 
 # go version for rules_go
 GO_VERSION = "1.10.4"

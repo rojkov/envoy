@@ -1,4 +1,7 @@
 #include "extensions/transport_sockets/tls/utility.h"
+#ifdef BORINGSSL_IS_WRAPPER
+#include "extensions/bssl_wrapper/bssl_wrapper.h"
+#endif
 
 #include "common/common/assert.h"
 

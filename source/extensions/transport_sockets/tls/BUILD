@@ -111,5 +111,8 @@ envoy_cc_library(
     deps = [
         "//source/common/common:assert_lib",
         "//source/common/common:utility_lib",
-    ],
+    ] + select({
+        "//bazel:openssl": ["//source/extensions/bssl_wrapper:bssl_wrapper_lib"],
+		"//conditions:default": [],
+    }),
 )

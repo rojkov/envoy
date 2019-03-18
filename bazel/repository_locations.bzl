@@ -20,6 +20,11 @@ REPOSITORY_LOCATIONS = dict(
         strip_prefix = "openssl-OpenSSL_1_1_1b",
         urls = ["https://github.com/openssl/openssl/archive/OpenSSL_1_1_1b.tar.gz"],
     ),
+    bssl_wrapper = dict(
+        sha256 = "d9e500e1a8849c81e690966422baf66016a7ff85d044c210ad85644f62827158",
+        strip_prefix = "bssl_wrapper-34df33add45e1a02927fcf79b0bdd5899b7e2e36",
+        urls = ["https://github.com/bdecoste/bssl_wrapper/archive/34df33add45e1a02927fcf79b0bdd5899b7e2e36.tar.gz"],
+    ),
     com_google_absl = dict(
         sha256 = "e35082e88b9da04f4d68094c05ba112502a5063712f3021adfa465306d238c76",
         strip_prefix = "abseil-cpp-cc8dcd307b76a575d2e3e0958a4fe4c7193c2f68",

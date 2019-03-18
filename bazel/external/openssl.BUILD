@@ -21,6 +21,12 @@ cc_library(
     deps = [":crypto"],
 )
 
+alias(
+    name = "openssl-lib",
+    actual = "ssl",
+    visibility = ["//visibility:public"],
+)
+
 genrule(
     name = "build",
     srcs = glob(["openssl-OpenSSL_1_1_1b/**"]),
