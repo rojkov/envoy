@@ -268,7 +268,7 @@ def envoy_dependencies(path = "@envoy_deps//", skip_targets = []):
     _com_github_openssl()
     native.bind(
         name = "ssl",
-        actual = "@com_github_openssl//:ssl",
+        actual = "@envoy//bazel:boringssl",
     )
 
     # The long repo names (`com_github_fmtlib_fmt` instead of `fmtlib`) are

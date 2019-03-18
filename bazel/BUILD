@@ -150,6 +150,11 @@ config_setting(
 )
 
 config_setting(
+    name = "openssl",
+    values = {"define": "boringssl=openssl"},
+)
+
+config_setting(
     name = "enable_quiche",
     values = {"define": "quiche=enabled"},
 )
@@ -161,6 +166,7 @@ alias(
     name = "boringssl",
     actual = select({
         "//bazel:boringssl_fips": "@boringssl_fips//:ssl",
+        "//bazel:openssl": "@com_github_openssl//:ssl",
         "//conditions:default": "@boringssl//:ssl",
     }),
 )
