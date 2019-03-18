@@ -1,8 +1,14 @@
 licenses(["notice"])  # Apache 2
 
-package(default_visibility = ["//visibility:public"])
+load(
+    "//bazel:envoy_build_system.bzl",
+    "envoy_cc_library",
+    "envoy_package",
+)
 
-cc_library(
+envoy_package()
+
+envoy_cc_library(
     name = "bssl_wrapper_lib",
     srcs = [
         "bssl_wrapper.cc",
@@ -10,7 +16,6 @@ cc_library(
     hdrs = [
         "bssl_wrapper.h",
     ],
-	defines = ["BORINGSLL_IS_WRAPPED"],
     deps = [
         "@openssl//:ssl",
     ],

@@ -98,7 +98,10 @@ envoy_cc_library(
         "//source/common/common:utility_lib",
         "//source/common/protobuf:utility_lib",
         "@envoy_api//envoy/admin/v2alpha:certs_cc",
-    ],
+    ] + select({
+        "//bazel:openssl": ["//source/extensions/bssl_wrapper:bssl_wrapper_lib"],
+		"//conditions:default": [],
+    }),
 )
 
 envoy_cc_library(

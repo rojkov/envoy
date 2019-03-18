@@ -10,6 +10,9 @@
 #include "envoy/stats/scope.h"
 #include "envoy/stats/stats_macros.h"
 
+#ifdef BORINGSSL_IS_WRAPPED
+#include "extensions/bssl_wrapper/bssl_wrapper.h"
+#endif
 #include "extensions/transport_sockets/tls/context_manager_impl.h"
 
 #include "absl/synchronization/mutex.h"
@@ -192,10 +195,12 @@ private:
                          unsigned int inlen);
   int sessionTicketProcess(SSL* ssl, uint8_t* key_name, uint8_t* iv, EVP_CIPHER_CTX* ctx,
                            HMAC_CTX* hmac_ctx, int encrypt);
+#ifndef BORINGSSL_IS_WRAPPED
   bool isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_hello);
   // Select the TLS certificate context in SSL_CTX_set_select_certificate_cb() callback with
   // ClientHello details.
   enum ssl_select_cert_result_t selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello);
+#endif
   void generateHashForSessionContexId(const std::vector<std::string>& server_names,
                                       uint8_t* session_context_buf, unsigned& session_context_len);
 

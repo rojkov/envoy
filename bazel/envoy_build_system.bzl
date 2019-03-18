@@ -78,6 +78,9 @@ def envoy_copts(repository, test = False):
                repository + "//bazel:enable_log_debug_assert_in_release": ["-DENVOY_LOG_DEBUG_ASSERT_IN_RELEASE"],
                "//conditions:default": [],
            }) + select({
+               repository + "//bazel:openssl": ["-DBORINGSSL_IS_WRAPPED"],
+               "//conditions:default": [],
+           }) + select({
                # TCLAP command line parser needs this to support int64_t/uint64_t
                "@bazel_tools//tools/osx:darwin": ["-DHAVE_LONG_LONG"],
                "//conditions:default": [],

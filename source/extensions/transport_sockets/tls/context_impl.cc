@@ -948,6 +948,8 @@ int ServerContextImpl::sessionTicketProcess(SSL*, uint8_t* key_name, uint8_t* iv
   }
 }
 
+#ifndef BORINGSSL_IS_WRAPPED
+
 bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_hello) {
   CBS client_hello;
   CBS_init(&client_hello, ssl_client_hello->client_hello, ssl_client_hello->client_hello_len);
@@ -1033,6 +1035,8 @@ ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
                  "");
   return ssl_select_cert_success;
 }
+
+#endif // BORINGSSL_IS_WRAPPED
 
 void ServerContextImpl::TlsContext::addClientValidationContext(
     const Envoy::Ssl::CertificateValidationContextConfig& config, bool require_client_cert) {

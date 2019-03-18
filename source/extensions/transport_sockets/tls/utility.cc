@@ -1,5 +1,5 @@
 #include "extensions/transport_sockets/tls/utility.h"
-#ifdef BORINGSSL_IS_WRAPPER
+#ifdef BORINGSSL_IS_WRAPPED
 #include "extensions/bssl_wrapper/bssl_wrapper.h"
 #endif
 
