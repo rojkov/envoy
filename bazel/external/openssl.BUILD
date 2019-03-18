@@ -5,20 +5,18 @@ load(":genrule_cmd.bzl", "genrule_cmd")
 cc_library(
     name = "crypto",
     srcs = [
-        "crypto/libcrypto.a",
+        "lib/libcrypto.a",
     ],
-    hdrs = glob(["openssl/include/openssl/*.h"]),
-    includes = ["openssl/include"],
+    hdrs = glob(["com_github_openssl/include/openssl/*.h"]),
+    includes = ["com_github_openssl/include"],
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "ssl",
     srcs = [
-        "lib/libssl.so",
+        "lib/libssl.a",
     ],
-    hdrs = glob(["openssl/include/openssl/*.h"]),
-    includes = ["openssl/include"],
     visibility = ["//visibility:public"],
     deps = [":crypto"],
 )
