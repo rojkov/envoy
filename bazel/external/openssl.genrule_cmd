@@ -14,6 +14,10 @@ make install
 
 # Move compiled libraries to the expected destinations.
 popd
-find $$ROOT/install
-mv $$ROOT/install/include $$(dirname $(location include/openssl/ssl.h))/../../
-mv $$ROOT/install/lib $$(dirname $(location lib/libssl.a))/../
+INSTALL_ROOT=$$(dirname $$(dirname $(location lib/libssl.a)))
+echo "Envoy install root $$INSTALL_ROOT and PWD is $$(pwd)"
+rm -rf $$INSTALL_ROOT/include
+rm -rf $$INSTALL_ROOT/lib
+mkdir -p $$INSTALL_ROOT
+mv $$ROOT/install/include $$INSTALL_ROOT/
+mv $$ROOT/install/lib $$INSTALL_ROOT/
