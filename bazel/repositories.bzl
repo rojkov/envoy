@@ -262,10 +262,10 @@ def envoy_dependencies(path = "@envoy_deps//", skip_targets = []):
     # Binding to an alias pointing to the selected version of BoringSSL:
     # - BoringSSL FIPS from @boringssl_fips//:ssl,
     # - non-FIPS BoringSSL from @boringssl//:ssl.
-    # - OpenSSL from @com_github_openssl//:ssl.
+    # - OpenSSL from @openssl//:ssl.
     _boringssl()
     _boringssl_fips()
-    _com_github_openssl()
+    _openssl()
     native.bind(
         name = "ssl",
         actual = "@envoy//bazel:boringssl",
@@ -322,10 +322,10 @@ def _boringssl_fips():
         build_file = "@envoy//bazel/external:boringssl_fips.BUILD",
     )
 
-def _com_github_openssl():
+def _openssl():
     location = REPOSITORY_LOCATIONS["com_github_openssl"]
     genrule_repository(
-        name = "com_github_openssl",
+        name = "openssl",
         urls = location["urls"],
         sha256 = location["sha256"],
         genrule_cmd_file = "@envoy//bazel/external:openssl.genrule_cmd",

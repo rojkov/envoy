@@ -166,7 +166,7 @@ alias(
     name = "boringssl",
     actual = select({
         "//bazel:boringssl_fips": "@boringssl_fips//:ssl",
-        "//bazel:openssl": "@com_github_openssl//:ssl",
+        "//bazel:openssl": "@openssl//:ssl",
         "//conditions:default": "@boringssl//:ssl",
     }),
 )

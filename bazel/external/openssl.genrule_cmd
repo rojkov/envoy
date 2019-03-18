@@ -3,7 +3,7 @@
 set -e
 
 # Bazel magic.
-# ROOT=external/com_github_openssl/openssl-OpenSSL_1_1_1b
+# ROOT=external/openssl/openssl-OpenSSL_1_1_1b
 ROOT=$$(dirname $(execpath openssl-OpenSSL_1_1_1b/NOTES.ANDROID))
 pushd $$ROOT
 

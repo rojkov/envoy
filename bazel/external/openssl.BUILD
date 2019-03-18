@@ -7,8 +7,8 @@ cc_library(
     srcs = [
         "lib/libcrypto.a",
     ],
-    hdrs = glob(["com_github_openssl/include/openssl/*.h"]),
-    includes = ["com_github_openssl/include"],
+    hdrs = glob(["openssl/include/openssl/*.h"]),
+    includes = ["openssl/include"],
     visibility = ["//visibility:public"],
 )
 
