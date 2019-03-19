@@ -814,6 +814,7 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
   // First, configure the base context for ClientHello interception.
   // TODO(htuch): replace with SSL_IDENTITY when we have this as a means to do multi-cert in
   // BoringSSL.
+  #ifndef BORINGSSL_IS_WRAPPED
   SSL_CTX_set_select_certificate_cb(
       tls_contexts_[0].ssl_ctx_.get(),
       [](const SSL_CLIENT_HELLO* client_hello) -> ssl_select_cert_result_t {
@@ -821,6 +822,7 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
                    SSL_CTX_get_app_data(SSL_get_SSL_CTX(client_hello->ssl)))
             ->selectTlsContext(client_hello);
       });
+  #endif
   // Compute the session context ID hash. We use all the certificate identities,
   // since we should have a common ID for session resumption no matter what cert
   // is used.
@@ -844,6 +846,7 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
                                  this);
     }
 
+#ifndef BORINGSSL_IS_WRAPPED
     if (!session_ticket_keys_.empty()) {
       SSL_CTX_set_tlsext_ticket_key_cb(
           ctx.ssl_ctx_.get(),
@@ -857,6 +860,20 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
                                                              encrypt);
           });
     }
+#else
+    auto ssl_tlsext_ticket_key_cb =
+        +[](SSL* ssl, unsigned char key_name[16], unsigned char* iv, EVP_CIPHER_CTX* ctx,
+            HMAC_CTX* hmac_ctx, int encrypt) -> int {
+      ContextImpl* context_impl =
+          static_cast<ContextImpl*>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
+      ServerContextImpl* server_context_impl = dynamic_cast<ServerContextImpl*>(context_impl);
+      RELEASE_ASSERT(server_context_impl != nullptr, ""); // for Coverity
+      return server_context_impl->sessionTicketProcess(ssl, key_name, iv, ctx, hmac_ctx, encrypt);
+    };
+    if (!session_ticket_keys_.empty()) {
+      SSL_CTX_set_tlsext_ticket_key_cb(ctx.ssl_ctx_.get(), ssl_tlsext_ticket_key_cb);
+    }
+#endif
 
     int rc = SSL_CTX_set_session_id_context(ctx.ssl_ctx_.get(), session_context_buf,
                                             session_context_len);
