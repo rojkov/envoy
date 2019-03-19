@@ -102,6 +102,7 @@ envoy_cc_library(
         "//bazel:openssl": [
             "//source/extensions/bssl_wrapper:bssl_wrapper_lib",
             "//source/extensions/bssl_wrapper:crypto_bytestring_lib",
+            "//source/extensions/bssl_wrapper:openssl_impl_lib",
         ],
 		"//conditions:default": [],
     }),
@@ -118,7 +119,7 @@ envoy_cc_library(
         "//source/common/common:assert_lib",
         "//source/common/common:utility_lib",
     ] + select({
-        "//bazel:openssl": ["//source/extensions/bssl_wrapper:bssl_wrapper_lib"],
+        "//bazel:openssl": ["//source/extensions/bssl_wrapper:bssl_wrapper_lib","//source/extensions/bssl_wrapper:openssl_impl_lib"],
 		"//conditions:default": [],
     }),
 )

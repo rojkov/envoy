@@ -1,6 +1,7 @@
 #include "extensions/transport_sockets/tls/utility.h"
 #ifdef BORINGSSL_IS_WRAPPED
 #include "extensions/bssl_wrapper/bssl_wrapper.h"
+#include "extensions/bssl_wrapper/openssl_impl.h"
 #endif
 
 #include "common/common/assert.h"
@@ -31,6 +32,7 @@ inline bssl::UniquePtr<ASN1_TIME> currentASN1_Time(TimeSource& time_source) {
 }
 
 std::string Utility::getSerialNumberFromCertificate(X509& cert) {
+#ifndef BORINGSSL_IS_WRAPPED
   ASN1_INTEGER* serial_number = X509_get_serialNumber(&cert);
   BIGNUM num_bn;
   BN_init(&num_bn);
@@ -43,6 +45,9 @@ std::string Utility::getSerialNumberFromCertificate(X509& cert) {
     return serial_number;
   }
   return "";
+#else
+  return Envoy::Extensions::TransportSockets::Tls::getSerialNumberFromCertificate(&cert);
+#endif
 }
 
 std::vector<std::string> Utility::getSubjectAltNames(X509& cert, int type) {
@@ -55,7 +60,11 @@ std::vector<std::string> Utility::getSubjectAltNames(X509& cert, int type) {
   for (const GENERAL_NAME* san : san_names.get()) {
     if (san->type == type) {
       ASN1_STRING* str = san->d.dNSName;
+#ifndef BORINGSSL_IS_WRAPPED
       const char* dns_name = reinterpret_cast<const char*>(ASN1_STRING_data(str));
+#else
+      const char* dns_name = reinterpret_cast<const char*>(ASN1_STRING_get0_data(str));
+#endif
       subject_alt_names.push_back(std::string(dns_name));
     }
   }

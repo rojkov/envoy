@@ -299,6 +299,24 @@ const uint8_t *CBS_data(const CBS *cbs) {
   return cbs->data_;
 }
 
+static int cbs_get_length_prefixed(CBS *cbs, CBS *out, size_t len_len) {
+  uint32_t len; // TODO: must be uint64_t
+  if (!CBS_get_u(cbs, &len, len_len)) {
+    return 0;
+  }
+  // If |len_len| <= 3 then we know that |len| will fit into a |size_t|, even on
+  // 32-bit systems.
+  assert(len_len <= 3);
+  return CBS_get_bytes(cbs, out, len);
+}
+
+int CBS_get_u8_length_prefixed(CBS *cbs, CBS *out) {
+  return cbs_get_length_prefixed(cbs, out, 1);
+}
+
+int CBS_get_u16_length_prefixed(CBS *cbs, CBS *out) {
+  return cbs_get_length_prefixed(cbs, out, 2);
+}
 
 int parse_asn1_tag(CBS *cbs, unsigned *out) {
   uint8_t tag_byte;

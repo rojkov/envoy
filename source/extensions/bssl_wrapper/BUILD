@@ -34,3 +34,17 @@ envoy_cc_library(
         "@openssl//:ssl",
     ],
 )
+
+envoy_cc_library(
+    name = "openssl_impl_lib",
+    srcs = [
+        "openssl_impl.cc",
+    ],
+    hdrs = [
+        "openssl_impl.h",
+    ],
+    deps = [
+        ":bssl_wrapper_lib",
+        "@openssl//:ssl",
+    ],
+)

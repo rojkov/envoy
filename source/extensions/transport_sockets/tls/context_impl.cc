@@ -15,6 +15,10 @@
 #include "common/common/utility.h"
 #include "common/protobuf/utility.h"
 
+#ifdef BORINGSSL_IS_WRAPPED
+#include "extensions/bssl_wrapper/openssl_impl.h"
+#include "openssl/err.h"
+#endif
 #include "extensions/transport_sockets/tls/utility.h"
 
 #include "openssl/evp.h"
@@ -64,15 +68,29 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
     rc = SSL_CTX_set_max_proto_version(ctx.ssl_ctx_.get(), config.maxProtocolVersion());
     RELEASE_ASSERT(rc == 1, "");
 
+#ifndef BORINGSSL_IS_WRAPPED
     if (!SSL_CTX_set_strict_cipher_list(ctx.ssl_ctx_.get(), config.cipherSuites().c_str())) {
+#else
+    if (!Envoy::Extensions::TransportSockets::Tls::set_strict_cipher_list(
+      ctx.ssl_ctx_.get(), config.cipherSuites().c_str())) {
+#endif
       std::vector<absl::string_view> ciphers =
           StringUtil::splitToken(config.cipherSuites(), ":+-![|]", false);
       std::vector<std::string> bad_ciphers;
       for (const auto& cipher : ciphers) {
         std::string cipher_str(cipher);
+#ifndef BORINGSSL_IS_WRAPPED
         if (!SSL_CTX_set_strict_cipher_list(ctx.ssl_ctx_.get(), cipher_str.c_str())) {
           bad_ciphers.push_back(cipher_str);
         }
+#else
+        if (cipher_str.compare("-ALL") && cipher_str.compare("ALL")) {
+          if (!Envoy::Extensions::TransportSockets::Tls::set_strict_cipher_list(
+            ctx.ssl_ctx_.get(), cipher_str.c_str())) {
+              bad_ciphers.push_back(cipher_str);
+          }
+        }
+#endif
       }
       throw EnvoyException(fmt::format("Failed to initialize cipher suites {}. The following "
                                        "ciphers were rejected when tried individually: {}",
@@ -115,7 +133,11 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
           X509_STORE_add_crl(store, item->crl);
           has_crl = true;
         }
+
+        Envoy::Extensions::TransportSockets::Tls::ssl_ctx_add_client_CA(ctx.ssl_ctx_.get(),
+                                                                        item->x509);
       }
+
       if (ca_cert_ == nullptr) {
         throw EnvoyException(fmt::format("Failed to load trusted CA certificates from {}",
                                          config.certificateValidationContext()->caCertPath()));
@@ -416,10 +438,15 @@ int ContextImpl::verifyCallback(X509_STORE_CTX* store_ctx, void* arg) {
     }
   }
 
+#ifndef BORINGSSL_IS_WRAPPED
   SSL* ssl = reinterpret_cast<SSL*>(
       X509_STORE_CTX_get_ex_data(store_ctx, SSL_get_ex_data_X509_STORE_CTX_idx()));
   bssl::UniquePtr<X509> cert(SSL_get_peer_certificate(ssl));
   return impl->verifyCertificate(cert.get());
+#else
+  X509* cert = Envoy::Extensions::TransportSockets::Tls::getVerifyCallbackCert(store_ctx, arg);
+  return impl->verifyCertificate(cert);
+#endif
 }
 
 int ContextImpl::verifyCertificate(X509* cert) {
@@ -459,6 +486,7 @@ void ContextImpl::logHandshake(SSL* ssl) const {
   const char* version = SSL_get_version(ssl);
   scope_.counter(fmt::format("ssl.versions.{}", std::string{version})).inc();
 
+#ifndef BORINGSSL_IS_WRAPPED
   uint16_t curve_id = SSL_get_curve_id(ssl);
   if (curve_id) {
     const char* curve = SSL_get_curve_name(curve_id);
@@ -470,6 +498,22 @@ void ContextImpl::logHandshake(SSL* ssl) const {
     const char* sigalg = SSL_get_signature_algorithm_name(sigalg_id, 1 /* include curve */);
     scope_.counter(fmt::format("ssl.sigalgs.{}", std::string{sigalg})).inc();
   }
+#else
+  int group = SSL_get_shared_group(ssl, 0);
+  if (group > 0) {
+    switch (group) {
+    case NID_X25519: {
+      scope_.counter(fmt::format("ssl.curves.{}", "X25519")).inc();
+    } break;
+    case NID_X9_62_prime256v1: {
+      scope_.counter(fmt::format("ssl.curves.{}", "P-256")).inc();
+    } break;
+      // case NID_secp384r1: {
+      //       scope_.counter(fmt::format("ssl.curves.{}", "P-384")).inc();
+      //} break;
+    }
+  }
+#endif
 
   bssl::UniquePtr<X509> cert(SSL_get_peer_certificate(ssl));
   if (!cert.get()) {
@@ -487,7 +531,11 @@ bool ContextImpl::verifySubjectAltName(X509* cert,
   for (const GENERAL_NAME* san : san_names.get()) {
     if (san->type == GEN_DNS) {
       ASN1_STRING* str = san->d.dNSName;
+#ifndef BORINGSSL_IS_WRAPPED
       const char* dns_name = reinterpret_cast<const char*>(ASN1_STRING_data(str));
+#else
+      const char* dns_name = reinterpret_cast<const char*>(ASN1_STRING_get0_data(str));
+#endif
       for (auto& config_san : subject_alt_names) {
         if (dNSNameMatch(config_san, dns_name)) {
           return true;
@@ -495,7 +543,11 @@ bool ContextImpl::verifySubjectAltName(X509* cert,
       }
     } else if (san->type == GEN_URI) {
       ASN1_STRING* str = san->d.uniformResourceIdentifier;
+#ifndef BORINGSSL_IS_WRAPPED
       const char* uri = reinterpret_cast<const char*>(ASN1_STRING_data(str));
+#else
+      const char* uri = reinterpret_cast<const char*>(ASN1_STRING_get0_data(str));
+#endif
       for (auto& config_san : subject_alt_names) {
         if (config_san.compare(uri) == 0) {
           return true;
@@ -641,6 +693,7 @@ ClientContextImpl::ClientContextImpl(Stats::Scope& scope,
     }
   }
 
+#ifndef BORINGSSL_IS_WRAPPED
   if (!config.signingAlgorithmsForTest().empty()) {
     const uint16_t sigalgs = parseSigningAlgorithmsForTest(config.signingAlgorithmsForTest());
     RELEASE_ASSERT(sigalgs != 0, "");
@@ -650,6 +703,7 @@ ClientContextImpl::ClientContextImpl(Stats::Scope& scope,
       RELEASE_ASSERT(rc == 1, "");
     }
   }
+#endif
 
   if (max_session_keys_ > 0) {
     SSL_CTX_set_session_cache_mode(tls_contexts_[0].ssl_ctx_.get(), SSL_SESS_CACHE_CLIENT);
@@ -676,7 +730,11 @@ bssl::UniquePtr<SSL> ClientContextImpl::newSsl(absl::optional<std::string> overr
   }
 
   if (allow_renegotiation_) {
+#ifndef BORINGSSL_IS_WRAPPED
     SSL_set_renegotiate_mode(ssl_con.get(), ssl_renegotiate_freely);
+#else
+    Envoy::Extensions::TransportSockets::Tls::allowRenegotiation(ssl_con.get());
+#endif
   }
 
   if (max_session_keys_ > 0) {
@@ -689,7 +747,11 @@ bssl::UniquePtr<SSL> ClientContextImpl::newSsl(absl::optional<std::string> overr
         SSL_SESSION* session = session_keys_.front().get();
         SSL_set_session(ssl_con.get(), session);
         // Remove single-use session key (TLS 1.3) after first use.
+#ifndef BORINGSSL_IS_WRAPPED
         if (SSL_SESSION_should_be_single_use(session)) {
+#else
+        if (Envoy::Extensions::TransportSockets::Tls::should_be_single_use(session)) {
+#endif
           session_keys_.pop_front();
         }
       }
@@ -711,7 +773,11 @@ bssl::UniquePtr<SSL> ClientContextImpl::newSsl(absl::optional<std::string> overr
 int ClientContextImpl::newSessionKey(SSL_SESSION* session) {
   // In case we ever store single-use session key (TLS 1.3),
   // we need to switch to using write/write locks.
+#ifndef BORINGSSL_IS_WRAPPED
   if (SSL_SESSION_should_be_single_use(session)) {
+#else
+  if (Envoy::Extensions::TransportSockets::Tls::should_be_single_use(session)) {
+#endif
     session_keys_single_use_ = true;
   }
   absl::WriterMutexLock l(&session_keys_mu_);
@@ -724,6 +790,7 @@ int ClientContextImpl::newSessionKey(SSL_SESSION* session) {
   return 1; // Tell BoringSSL that we took ownership of the session.
 }
 
+#ifndef BORINGSSL_IS_WRAPPED
 uint16_t ClientContextImpl::parseSigningAlgorithmsForTest(const std::string& sigalgs) {
   // This is used only when testing RSA/ECDSA certificate selection, so only the signing algorithms
   // used in tests are supported here.
@@ -734,6 +801,7 @@ uint16_t ClientContextImpl::parseSigningAlgorithmsForTest(const std::string& sig
   }
   return 0;
 }
+#endif
 
 ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
                                      const Envoy::Ssl::ServerContextConfig& config,
@@ -820,7 +888,11 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
       RELEASE_ASSERT(cn_entry != nullptr, "");
       ASN1_STRING* cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry);
       RELEASE_ASSERT(ASN1_STRING_length(cn_asn1) > 0, "");
+#ifndef BORINGSSL_IS_WRAPPED
       rc = EVP_DigestUpdate(&md, ASN1_STRING_data(cn_asn1), ASN1_STRING_length(cn_asn1));
+#else
+      rc = EVP_DigestUpdate(&md, ASN1_STRING_get0_data(cn_asn1), ASN1_STRING_length(cn_asn1));
+#endif
       RELEASE_ASSERT(rc == 1, "");
     }
 

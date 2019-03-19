@@ -64,8 +64,8 @@ void CBS_init(CBS *cbs, const uint8_t *data, size_t len);
 int CBS_get_u8(CBS *cbs, uint8_t *out);
 int CBS_get_u16(CBS *cbs, uint16_t *out);
 
-
-
+int CBS_get_u8_length_prefixed(CBS *cbs, CBS *out);
+int CBS_get_u16_length_prefixed(CBS *cbs, CBS *out);
 
 
 
