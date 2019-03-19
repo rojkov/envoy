@@ -33,6 +33,7 @@ namespace Tls {
 
 namespace {
 
+#ifndef BORINGSSL_IS_WRAPPED
 bool cbsContainsU16(CBS& cbs, uint16_t n) {
   while (CBS_len(&cbs) > 0) {
     uint16_t v;
@@ -46,6 +47,7 @@ bool cbsContainsU16(CBS& cbs, uint16_t n) {
 
   return false;
 }
+#endif
 
 } // namespace
 
@@ -1137,8 +1139,13 @@ void ServerContextImpl::TlsContext::addClientValidationContext(
       BIO_new_mem_buf(const_cast<char*>(config.caCert().data()), config.caCert().size()));
   RELEASE_ASSERT(bio != nullptr, "");
   // Based on BoringSSL's SSL_add_file_cert_subjects_to_stack().
+#ifndef BORINGSSL_IS_WRAPPED
   bssl::UniquePtr<STACK_OF(X509_NAME)> list(sk_X509_NAME_new(
       [](const X509_NAME** a, const X509_NAME** b) -> int { return X509_NAME_cmp(*a, *b); }));
+#else
+  bssl::UniquePtr<STACK_OF(X509_NAME)> list =
+    Envoy::Extensions::TransportSockets::Tls::initX509Names();
+#endif
   RELEASE_ASSERT(list != nullptr, "");
   for (;;) {
     bssl::UniquePtr<X509> cert(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
@@ -1176,6 +1183,7 @@ void ServerContextImpl::TlsContext::addClientValidationContext(
   }
 }
 
+#ifndef BORINGSSL_IS_WRAPPED
 bool ServerContextImpl::TlsContext::isCipherEnabled(uint16_t cipher_id, uint16_t client_version) {
   const SSL_CIPHER* c = SSL_get_cipher_by_value(cipher_id);
   if (c == nullptr) {
@@ -1195,6 +1203,7 @@ bool ServerContextImpl::TlsContext::isCipherEnabled(uint16_t cipher_id, uint16_t
   }
   return false;
 }
+#endif
 
 } // namespace Tls
 } // namespace TransportSockets
