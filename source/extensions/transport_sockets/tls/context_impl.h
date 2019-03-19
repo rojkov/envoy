@@ -12,6 +12,7 @@
 
 #ifdef BORINGSSL_IS_WRAPPED
 #include "extensions/bssl_wrapper/bssl_wrapper.h"
+#include "extensions/bssl_wrapper/bytestring.h"
 #endif
 #include "extensions/transport_sockets/tls/context_manager_impl.h"
 

@@ -1,4 +1,4 @@
-#include "bssl_wrapper.h"
+#include "extensions/bssl_wrapper/bssl_wrapper.h"
 
 int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
                      size_t *out_len) {

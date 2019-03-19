@@ -20,3 +20,17 @@ envoy_cc_library(
         "@openssl//:ssl",
     ],
 )
+
+envoy_cc_library(
+    name = "crypto_bytestring_lib",
+    srcs = [
+        "bytestring.cc",
+    ],
+    hdrs = [
+        "bytestring.h",
+    ],
+    deps = [
+        ":bssl_wrapper_lib",
+        "@openssl//:ssl",
+    ],
+)
