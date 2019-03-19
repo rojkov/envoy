@@ -884,8 +884,8 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
 void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::string>& server_names,
                                                        uint8_t* session_context_buf,
                                                        unsigned& session_context_len) {
-  EVP_MD_CTX md;
-  int rc = EVP_DigestInit(&md, EVP_sha256());
+  EVP_MD_CTX *md;
+  int rc = EVP_DigestInit(md, EVP_sha256());
   RELEASE_ASSERT(rc == 1, "");
 
   // Hash the CommonName/SANs of all the server certificates. This makes sure that sessions can only
@@ -906,9 +906,9 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
       ASN1_STRING* cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry);
       RELEASE_ASSERT(ASN1_STRING_length(cn_asn1) > 0, "");
 #ifndef BORINGSSL_IS_WRAPPED
-      rc = EVP_DigestUpdate(&md, ASN1_STRING_data(cn_asn1), ASN1_STRING_length(cn_asn1));
+      rc = EVP_DigestUpdate(md, ASN1_STRING_data(cn_asn1), ASN1_STRING_length(cn_asn1));
 #else
-      rc = EVP_DigestUpdate(&md, ASN1_STRING_get0_data(cn_asn1), ASN1_STRING_length(cn_asn1));
+      rc = EVP_DigestUpdate(md, ASN1_STRING_get0_data(cn_asn1), ASN1_STRING_length(cn_asn1));
 #endif
       RELEASE_ASSERT(rc == 1, "");
     }
@@ -918,7 +918,7 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
     if (san_names != nullptr) {
       for (const GENERAL_NAME* san : san_names.get()) {
         if (san->type == GEN_DNS || san->type == GEN_URI) {
-          rc = EVP_DigestUpdate(&md, ASN1_STRING_data(san->d.ia5), ASN1_STRING_length(san->d.ia5));
+          rc = EVP_DigestUpdate(md, ASN1_STRING_data(san->d.ia5), ASN1_STRING_length(san->d.ia5));
           RELEASE_ASSERT(rc == 1, "");
         }
       }
@@ -931,7 +931,7 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
     rc =
         X509_NAME_digest(cert_issuer_name, EVP_sha256(), session_context_buf, &session_context_len);
     RELEASE_ASSERT(rc == 1 && session_context_len == SHA256_DIGEST_LENGTH, "");
-    rc = EVP_DigestUpdate(&md, session_context_buf, session_context_len);
+    rc = EVP_DigestUpdate(md, session_context_buf, session_context_len);
     RELEASE_ASSERT(rc == 1, "");
   }
 
@@ -942,25 +942,25 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
   if (ca_cert_ != nullptr) {
     rc = X509_digest(ca_cert_.get(), EVP_sha256(), session_context_buf, &session_context_len);
     RELEASE_ASSERT(rc == 1 && session_context_len == SHA256_DIGEST_LENGTH, "");
-    rc = EVP_DigestUpdate(&md, session_context_buf, session_context_len);
+    rc = EVP_DigestUpdate(md, session_context_buf, session_context_len);
     RELEASE_ASSERT(rc == 1, "");
 
     // verify_subject_alt_name_list_ can only be set with a ca_cert
     for (const std::string& name : verify_subject_alt_name_list_) {
-      rc = EVP_DigestUpdate(&md, name.data(), name.size());
+      rc = EVP_DigestUpdate(md, name.data(), name.size());
       RELEASE_ASSERT(rc == 1, "");
     }
   }
 
   for (const auto& hash : verify_certificate_hash_list_) {
-    rc = EVP_DigestUpdate(&md, hash.data(),
+    rc = EVP_DigestUpdate(md, hash.data(),
                           hash.size() *
                               sizeof(std::remove_reference<decltype(hash)>::type::value_type));
     RELEASE_ASSERT(rc == 1, "");
   }
 
   for (const auto& hash : verify_certificate_spki_list_) {
-    rc = EVP_DigestUpdate(&md, hash.data(),
+    rc = EVP_DigestUpdate(md, hash.data(),
                           hash.size() *
                               sizeof(std::remove_reference<decltype(hash)>::type::value_type));
     RELEASE_ASSERT(rc == 1, "");
@@ -969,11 +969,11 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
   // Hash configured SNIs for this context, so that sessions cannot be resumed across different
   // filter chains, even when using the same server certificate.
   for (const auto& name : server_names) {
-    rc = EVP_DigestUpdate(&md, name.data(), name.size());
+    rc = EVP_DigestUpdate(md, name.data(), name.size());
     RELEASE_ASSERT(rc == 1, "");
   }
 
-  rc = EVP_DigestFinal(&md, session_context_buf, &session_context_len);
+  rc = EVP_DigestFinal(md, session_context_buf, &session_context_len);
   RELEASE_ASSERT(rc == 1, "");
 }
 
