@@ -23,6 +23,13 @@ namespace Extensions {
 namespace ListenerFilters {
 namespace TlsInspector {
 
+void set_certificate_cb(SSL_CTX* ctx) {
+  auto cert_cb = [](SSL*, void*) -> int { return 0; };
+  SSL_CTX_set_cert_cb(ctx, cert_cb, ctx);
+}
+
+int getServernameCallbackReturn(int*) { return SSL_TLSEXT_ERR_OK; }
+
 Config::Config(Stats::Scope& scope, uint32_t max_client_hello_size)
     : stats_{ALL_TLS_INSPECTOR_STATS(POOL_COUNTER_PREFIX(scope, "tls_inspector."))},
       ssl_ctx_(SSL_CTX_new(TLS_with_buffers_method())),
@@ -35,6 +42,7 @@ Config::Config(Stats::Scope& scope, uint32_t max_client_hello_size)
 
   SSL_CTX_set_options(ssl_ctx_.get(), SSL_OP_NO_TICKET);
   SSL_CTX_set_session_cache_mode(ssl_ctx_.get(), SSL_SESS_CACHE_OFF);
+#ifndef BORINGSSL_IS_WRAPPED
   SSL_CTX_set_select_certificate_cb(
       ssl_ctx_.get(), [](const SSL_CLIENT_HELLO* client_hello) -> ssl_select_cert_result_t {
         const uint8_t* data;
@@ -55,6 +63,27 @@ Config::Config(Stats::Scope& scope, uint32_t max_client_hello_size)
         *out_alert = SSL_AD_USER_CANCELLED;
         return SSL_TLSEXT_ERR_ALERT_FATAL;
       });
+#else
+  set_certificate_cb(ssl_ctx_.get());
+
+  auto tlsext_servername_cb = +[](SSL* ssl, int* out_alert, void*) -> int {
+    Filter* filter = static_cast<Filter*>(SSL_get_app_data(ssl));
+    absl::string_view servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    filter->onServername(servername);
+
+    return Envoy::Extensions::ListenerFilters::TlsInspector::getServernameCallbackReturn(out_alert);
+  };
+  SSL_CTX_set_tlsext_servername_callback(ssl_ctx_.get(), tlsext_servername_cb);
+
+  auto alpn_cb = [](SSL* ssl, const unsigned char** out, unsigned char* outlen,
+                    const unsigned char* in, unsigned int inlen, void* arg) -> int {
+    Filter* filter = static_cast<Filter*>(SSL_get_app_data(ssl));
+    filter->onALPN(in, inlen);
+
+    return SSL_TLSEXT_ERR_OK;
+  };
+  SSL_CTX_set_alpn_select_cb(ssl_ctx_.get(), alpn_cb, nullptr);
+#endif
 }
 
 bssl::UniquePtr<SSL> Config::newSsl() { return bssl::UniquePtr<SSL>{SSL_new(ssl_ctx_.get())}; }

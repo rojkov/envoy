@@ -159,7 +159,7 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   // 8.1.3.
   if ((length_byte & 0x80) == 0) {
     // Short form length.
-    len = ((size_t) length_byte) + header_len;
+    len = static_cast<size_t>(length_byte) + header_len;
     if (out_header_len != NULL) {
       *out_header_len = header_len;
     }
@@ -211,6 +211,7 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   return CBS_get_bytes(cbs, out, len);
 }
 
+// TODO: should be static?
 int CBS_get_u(CBS *cbs, uint32_t *out, size_t len) {
   uint32_t result = 0;
   const uint8_t *data;
@@ -247,6 +248,15 @@ int CBS_get_u8(CBS *cbs, uint8_t *out) {
     return 0;
   }
   *out = *v;
+  return 1;
+}
+
+int CBS_get_u16(CBS *cbs, uint16_t *out) {
+  uint32_t v; // TODO: should be uint64_t
+  if (!CBS_get_u(cbs, &v, 2)) {
+    return 0;
+  }
+  *out = v;
   return 1;
 }
 
@@ -303,7 +313,7 @@ int parse_asn1_tag(CBS *cbs, unsigned *out) {
   // allotted bits), then the tag is more than one byte long and the
   // continuation bytes contain the tag number. This parser only supports tag
   // numbers less than 31 (and thus single-byte tags).
-  unsigned tag = ((unsigned)tag_byte & 0xe0) << CBS_ASN1_TAG_SHIFT;
+  unsigned tag = (static_cast<unsigned>(tag_byte) & 0xe0) << CBS_ASN1_TAG_SHIFT;
   unsigned tag_number = tag_byte & 0x1f;
   if (tag_number == 0x1f) {
     uint64_t v;
@@ -314,7 +324,7 @@ int parse_asn1_tag(CBS *cbs, unsigned *out) {
         v < 0x1f) {
       return 0;
     }
-    tag_number = (unsigned)v;
+    tag_number = static_cast<unsigned>(v);
   }
 
   tag |= tag_number;

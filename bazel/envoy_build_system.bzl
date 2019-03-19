@@ -35,7 +35,6 @@ def envoy_copts(repository, test = False):
         "-Werror",
         "-Wnon-virtual-dtor",
         "-Woverloaded-virtual",
-        "-Wold-style-cast",
         "-Wvla",
         "-std=c++14",
     ]
@@ -56,7 +55,8 @@ def envoy_copts(repository, test = False):
 
     return select({
                repository + "//bazel:windows_x86_64": msvc_options,
-               "//conditions:default": posix_options,
+               repository + "//bazel:openssl": posix_options + ["-Wno-error=old-style-cast", "-Wno-error=unused-variable", "-Wno-error=unused-parameter"],
+               "//conditions:default": posix_options + ["-Wold-style-cast"],
            }) + select({
                # Bazel adds an implicit -DNDEBUG for opt.
                repository + "//bazel:opt_build": [] if test else ["-ggdb3"],

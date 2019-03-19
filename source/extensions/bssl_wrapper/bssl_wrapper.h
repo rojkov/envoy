@@ -227,4 +227,6 @@ BORINGSSL_DEFINE_STACK_TRAITS(X509_NAME, X509_NAME, false)
 BORINGSSL_DEFINE_STACK_TRAITS(GENERAL_NAME, GENERAL_NAME, false)
 
 int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents, size_t *out_len);
+
+const SSL_METHOD* TLS_with_buffers_method();
 #endif // BSSL_WRAPPER_H

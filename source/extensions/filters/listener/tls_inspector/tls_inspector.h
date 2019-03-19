@@ -8,6 +8,10 @@
 
 #include "common/common/logger.h"
 
+#ifdef BORINGSSL_IS_WRAPPED
+#include "extensions/bssl_wrapper/bssl_wrapper.h"
+#include "extensions/bssl_wrapper/bytestring.h"
+#endif
 #include "openssl/ssl.h"
 
 namespace Envoy {

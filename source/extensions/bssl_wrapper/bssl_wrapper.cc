@@ -47,7 +47,8 @@ void bssl::rsa_free(RSA *a){
   RSA_free(a);
 }
 
-void bssl::bn_free(BIGNUM *a){
+void bssl::bn_free(BIGNUM * //a
+                  ){
 //  BN_free(a);
 }
 
@@ -59,3 +60,4 @@ void bssl::ecdsa_sig_free(ECDSA_SIG *a){
   ECDSA_SIG_free(a);
 }
 
+const SSL_METHOD* TLS_with_buffers_method(void) { return TLS_method(); }

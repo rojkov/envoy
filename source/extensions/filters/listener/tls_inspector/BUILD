@@ -25,7 +25,13 @@ envoy_cc_library(
         "//source/common/common:assert_lib",
         "//source/common/common:minimal_logger_lib",
         "//source/extensions/transport_sockets:well_known_names",
-    ],
+    ] + select({
+        "//bazel:openssl": [
+            "//source/extensions/bssl_wrapper:bssl_wrapper_lib",
+            "//source/extensions/bssl_wrapper:crypto_bytestring_lib",
+        ],
+		"//conditions:default": [],
+    }),
 )
 
 envoy_cc_library(
