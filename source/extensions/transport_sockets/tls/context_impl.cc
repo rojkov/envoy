@@ -918,7 +918,11 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
     if (san_names != nullptr) {
       for (const GENERAL_NAME* san : san_names.get()) {
         if (san->type == GEN_DNS || san->type == GEN_URI) {
+#ifndef BORINGSSL_IS_WRAPPED
           rc = EVP_DigestUpdate(md, ASN1_STRING_data(san->d.ia5), ASN1_STRING_length(san->d.ia5));
+#else
+          rc = EVP_DigestUpdate(md, ASN1_STRING_get0_data(san->d.ia5), ASN1_STRING_length(san->d.ia5));
+#endif
           RELEASE_ASSERT(rc == 1, "");
         }
       }
