@@ -884,7 +884,7 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
 void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::string>& server_names,
                                                        uint8_t* session_context_buf,
                                                        unsigned& session_context_len) {
-  EVP_MD_CTX *md;
+  EVP_MD_CTX* md = Envoy::Extensions::TransportSockets::Tls::newEVP_MD_CTX();
   int rc = EVP_DigestInit(md, EVP_sha256());
   RELEASE_ASSERT(rc == 1, "");
 
