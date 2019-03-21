@@ -52,7 +52,7 @@ std::vector<std::string> Utility::getSubjectAltNames(X509& cert, int type) {
   for (const GENERAL_NAME* san : san_names.get()) {
     if (san->type == type) {
       ASN1_STRING* str = san->d.dNSName;
-      const char* dns_name = reinterpret_cast<const char*>(ASN1_STRING_data(str));
+      const char* dns_name = reinterpret_cast<const char*>(ASN1_STRING_get0_data(str));
       subject_alt_names.push_back(std::string(dns_name));
     }
   }

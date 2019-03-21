@@ -487,7 +487,7 @@ bool ContextImpl::verifySubjectAltName(X509* cert,
   for (const GENERAL_NAME* san : san_names.get()) {
     if (san->type == GEN_DNS) {
       ASN1_STRING* str = san->d.dNSName;
-      const char* dns_name = reinterpret_cast<const char*>(ASN1_STRING_data(str));
+      const char* dns_name = reinterpret_cast<const char*>(ASN1_STRING_get0_data(str));
       for (auto& config_san : subject_alt_names) {
         if (dNSNameMatch(config_san, dns_name)) {
           return true;
@@ -495,7 +495,7 @@ bool ContextImpl::verifySubjectAltName(X509* cert,
       }
     } else if (san->type == GEN_URI) {
       ASN1_STRING* str = san->d.uniformResourceIdentifier;
-      const char* uri = reinterpret_cast<const char*>(ASN1_STRING_data(str));
+      const char* uri = reinterpret_cast<const char*>(ASN1_STRING_get0_data(str));
       for (auto& config_san : subject_alt_names) {
         if (config_san.compare(uri) == 0) {
           return true;
@@ -821,7 +821,7 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
       RELEASE_ASSERT(cn_entry != nullptr, "");
       ASN1_STRING* cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry);
       RELEASE_ASSERT(ASN1_STRING_length(cn_asn1) > 0, "");
-      rc = EVP_DigestUpdate(md.get(), ASN1_STRING_data(cn_asn1), ASN1_STRING_length(cn_asn1));
+      rc = EVP_DigestUpdate(md.get(), ASN1_STRING_get0_data(cn_asn1), ASN1_STRING_length(cn_asn1));
       RELEASE_ASSERT(rc == 1, "");
     }
 
@@ -830,7 +830,7 @@ void ServerContextImpl::generateHashForSessionContexId(const std::vector<std::st
     if (san_names != nullptr) {
       for (const GENERAL_NAME* san : san_names.get()) {
         if (san->type == GEN_DNS || san->type == GEN_URI) {
-          rc = EVP_DigestUpdate(md.get(), ASN1_STRING_data(san->d.ia5),
+          rc = EVP_DigestUpdate(md.get(), ASN1_STRING_get0_data(san->d.ia5),
                                 ASN1_STRING_length(san->d.ia5));
           RELEASE_ASSERT(rc == 1, "");
         }
