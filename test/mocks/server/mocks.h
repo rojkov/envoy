@@ -17,6 +17,7 @@
 #include "envoy/server/transport_socket_config.h"
 #include "envoy/server/worker.h"
 #include "envoy/ssl/context_manager.h"
+#include "envoy/ssl/private_key/private_key.h"
 #include "envoy/stats/scope.h"
 #include "envoy/stats/stats_options.h"
 #include "envoy/thread/thread.h"
@@ -489,6 +490,7 @@ public:
   MOCK_METHOD1(setInitManager, void(Init::Manager&));
   MOCK_METHOD0(initManager, Init::Manager*());
   MOCK_METHOD0(singletonManager, Singleton::Manager&());
+  // MOCK_METHOD0(privateKeyOperationsManager, Ssl::PrivateKeyOperationsManager&());
   MOCK_METHOD0(threadLocal, ThreadLocal::SlotAllocator&());
   MOCK_METHOD0(api, Api::Api&());
 

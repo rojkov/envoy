@@ -17,6 +17,8 @@
 #include "test/extensions/transport_sockets/tls/test_data/san_dns3_cert_info.h"
 #include "test/mocks/secret/mocks.h"
 #include "test/mocks/server/mocks.h"
+
+// #include "test/mocks/ssl/mocks.h"
 #include "test/test_common/environment.h"
 #include "test/test_common/simulated_time_system.h"
 #include "test/test_common/utility.h"
@@ -335,6 +337,24 @@ TEST_F(SslContextImplTest, AtMostOneEcdsaCert) {
   EXPECT_THROW_WITH_REGEX(manager_.createSslServerContext(store_, server_context_config, {}),
                           EnvoyException,
                           "at most one certificate of a given type may be specified");
+}
+
+TEST_F(SslContextImplTest, TestRsaPrivateKeyProvider) {
+  // Ssl::MockPrivateKeyOperationsManager private_key_manager;
+  // NiceMock<Server::Configuration::MockTransportSocketFactoryContext> factory_context;
+  envoy::api::v2::auth::DownstreamTlsContext tls_context;
+  const std::string tls_context_yaml = R"EOF(
+  common_tls_context:
+    private_key_operations:
+      private_key_provider: rsa
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/selfsigned_cert.pem"
+      private_key:
+        filename: "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/selfsigned_key.pem"
+)EOF";
+  MessageUtil::loadFromYaml(TestEnvironment::substitute(tls_context_yaml), tls_context);
+  ServerContextConfigImpl server_context_config(tls_context, factory_context_);
 }
 
 class SslServerContextImplTicketTest : public SslContextImplTest {

@@ -28,6 +28,7 @@ public:
                                       const std::vector<std::string>& server_names));
   MOCK_CONST_METHOD0(daysUntilFirstCertExpires, size_t());
   MOCK_METHOD1(iterateContexts, void(std::function<void(const Context&)> callback));
+  MOCK_METHOD0(privateKeyOperationsManager, PrivateKeyOperationsManager&());
 };
 
 class MockConnectionInfo : public ConnectionInfo {
@@ -58,6 +59,18 @@ public:
   MOCK_CONST_METHOD0(daysUntilFirstCertExpires, size_t());
   MOCK_CONST_METHOD0(getCaCertInformation, CertificateDetailsPtr());
   MOCK_CONST_METHOD0(getCertChainInformation, std::vector<CertificateDetailsPtr>());
+};
+
+class MockPrivateKeyOperationsManager : public Ssl::PrivateKeyOperationsManager {
+public:
+  MockPrivateKeyOperationsManager();
+  ~MockPrivateKeyOperationsManager();
+
+  MOCK_METHOD2(
+      createPrivateKeyOperationsProvider,
+      Ssl::PrivateKeyOperationsProviderSharedPtr(
+          const envoy::api::v2::auth::PrivateKeyOperations& message,
+          Server::Configuration::TransportSocketFactoryContext& private_key_provider_context));
 };
 
 } // namespace Ssl
