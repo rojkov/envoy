@@ -1,4 +1,4 @@
-#include "extensions/transport_sockets/tls/context_manager_impl.h"
+#include "extensions/transport_sockets/tls/openssl/context_manager_impl.h"
 
 #include <functional>
 
@@ -6,7 +6,7 @@
 
 #include "common/common/assert.h"
 
-#include "extensions/transport_sockets/tls/context_impl.h"
+#include "extensions/transport_sockets/tls/openssl/context_impl.h"
 
 namespace Envoy {
 namespace Extensions {

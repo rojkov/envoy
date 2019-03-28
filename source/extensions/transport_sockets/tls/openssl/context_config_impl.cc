@@ -1,4 +1,4 @@
-#include "extensions/transport_sockets/tls/context_config_impl.h"
+#include "extensions/transport_sockets/tls/openssl/context_config_impl.h"
 
 #include <memory>
 #include <string>
