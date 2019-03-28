@@ -13,28 +13,17 @@ envoy_package()
 
 envoy_cc_library(
     name = "tls_inspector_lib",
-    srcs = ["tls_inspector.cc"],
     hdrs = ["tls_inspector.h"],
-    external_deps = ["ssl"],
-    deps = [
-        "//include/envoy/event:dispatcher_interface",
-        "//include/envoy/event:timer_interface",
-        "//include/envoy/network:filter_interface",
-        "//include/envoy/network:listen_socket_interface",
-        "//source/common/api:os_sys_calls_lib",
-        "//source/common/common:assert_lib",
-        "//source/common/common:minimal_logger_lib",
-        "//source/extensions/transport_sockets:well_known_names",
-    ],
+    deps = select({
+        "//bazel:openssl": ["//source/extensions/filters/listener/tls_inspector/openssl:tls_inspector_lib"],
+        "//conditions:default": ["//source/extensions/filters/listener/tls_inspector/boringssl:tls_inspector_lib"],
+    }),
 )
 
 envoy_cc_library(
     name = "config",
-    srcs = ["config.cc"],
-    deps = [
-        "//include/envoy/registry",
-        "//include/envoy/server:filter_config_interface",
-        "//source/extensions/filters/listener:well_known_names",
-        "//source/extensions/filters/listener/tls_inspector:tls_inspector_lib",
-    ],
+    deps = select({
+        "//bazel:openssl": ["//source/extensions/filters/listener/tls_inspector/openssl:config"],
+        "//conditions:default": ["//source/extensions/filters/listener/tls_inspector/boringssl:config"],
+    }),
 )

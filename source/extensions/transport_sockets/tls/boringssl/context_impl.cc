@@ -1,4 +1,4 @@
-#include "extensions/transport_sockets/tls/context_impl.h"
+#include "extensions/transport_sockets/tls/boringssl/context_impl.h"
 
 #include <algorithm>
 #include <memory>
@@ -15,7 +15,7 @@
 #include "common/common/utility.h"
 #include "common/protobuf/utility.h"
 
-#include "extensions/transport_sockets/tls/utility.h"
+#include "extensions/transport_sockets/tls/boringssl/utility.h"
 
 #include "openssl/evp.h"
 #include "openssl/hmac.h"

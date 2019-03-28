@@ -1,4 +1,4 @@
-#include "extensions/filters/listener/tls_inspector/tls_inspector.h"
+#include "extensions/filters/listener/tls_inspector/boringssl/tls_inspector.h"
 
 #include <arpa/inet.h>
 
@@ -16,6 +16,7 @@
 
 #include "extensions/transport_sockets/well_known_names.h"
 
+#include "openssl/bytestring.h"
 #include "openssl/ssl.h"
 
 namespace Envoy {

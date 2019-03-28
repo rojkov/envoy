@@ -1,4 +1,4 @@
-#include "extensions/transport_sockets/tls/ssl_socket.h"
+#include "extensions/transport_sockets/tls/openssl/ssl_socket.h"
 
 #include "envoy/stats/scope.h"
 
@@ -7,7 +7,7 @@
 #include "common/common/hex.h"
 #include "common/http/headers.h"
 
-#include "extensions/transport_sockets/tls/utility.h"
+#include "extensions/transport_sockets/tls/openssl/utility.h"
 
 #include "absl/strings/str_replace.h"
 #include "openssl/err.h"
@@ -314,13 +314,13 @@ const std::string& SslSocket::urlEncodedPemEncodedPeerCertificateChain() const {
     return cached_url_encoded_pem_encoded_peer_cert_chain_;
   }
 
-  STACK_OF(X509)* cert_chain = SSL_get_peer_full_cert_chain(ssl_.get());
+  STACK_OF(X509)* cert_chain = SSL_get_peer_cert_chain(ssl_.get());
   if (cert_chain == nullptr) {
     ASSERT(cached_url_encoded_pem_encoded_peer_cert_chain_.empty());
     return cached_url_encoded_pem_encoded_peer_cert_chain_;
   }
 
-  for (uint64_t i = 0; i < sk_X509_num(cert_chain); i++) {
+  for (uint64_t i = 0; i < static_cast<uint64_t>(sk_X509_num(cert_chain)); i++) {
     X509* cert = sk_X509_value(cert_chain, i);
 
     bssl::UniquePtr<BIO> buf(BIO_new(BIO_s_mem()));

@@ -1,4 +1,4 @@
-#include "extensions/transport_sockets/tls/config.h"
+#include "extensions/transport_sockets/tls/openssl/config.h"
 
 #include "envoy/api/v2/auth/cert.pb.h"
 #include "envoy/api/v2/auth/cert.pb.validate.h"
@@ -6,8 +6,8 @@
 
 #include "common/protobuf/utility.h"
 
-#include "extensions/transport_sockets/tls/context_config_impl.h"
-#include "extensions/transport_sockets/tls/ssl_socket.h"
+#include "extensions/transport_sockets/tls/openssl/context_config_impl.h"
+#include "extensions/transport_sockets/tls/openssl/ssl_socket.h"
 
 namespace Envoy {
 namespace Extensions {

@@ -626,7 +626,9 @@ def _com_github_nanopb_nanopb():
     )
 
 def _com_github_google_jwt_verify():
-    _repository_impl("com_github_google_jwt_verify")
+    _repository_impl("com_github_google_jwt_verify",
+                     patches=["//bazel/external:jwt_verify-make-compatible-with-openssl.patch"],
+                     patch_args=["-p1"])
 
     native.bind(
         name = "jwt_verify_lib",
