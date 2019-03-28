@@ -48,5 +48,6 @@ envoy_cc_library(
     external_deps = ["ssl"],
     deps = [
         "//source/common/common:assert_lib",
+        "//source/extensions/common/boringssl_compat:bssl_compat_lib",
     ],
 )

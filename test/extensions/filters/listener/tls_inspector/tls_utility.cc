@@ -2,6 +2,8 @@
 
 #include "common/common/assert.h"
 
+#include "extensions/common/boringssl_compat/bssl.h"
+
 #include "openssl/ssl.h"
 
 namespace Envoy {
