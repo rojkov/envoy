@@ -1,0 +1,13 @@
+diff --git a/BUILD b/BUILD
+index d7c731b..f437fe7 100644
+--- a/BUILD
++++ b/BUILD
+@@ -132,7 +132,7 @@ cc_library(
+     srcs = crypto_sources + crypto_internal_headers + crypto_sources_asm,
+     hdrs = crypto_headers + fips_fragments,
+     copts = boringssl_copts_c11,
+-    includes = ["src/include"],
++    includes = ["src/include", "src/crypto/fipsmodule"],
+     linkopts = select({
+         ":mac_x86_64": [],
+         # Android supports pthreads, but does not provide a libpthread
