@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package qat;
+
+import "validate/validate.proto";
+
+message QatPrivateKeyOperationsConfig {
+  string section_name = 1 [(validate.rules).string.min_bytes = 1];
+  uint32 poll_delay = 2 [(validate.rules).uint32.gte = 1];
+}
