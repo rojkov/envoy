@@ -1,14 +1,14 @@
-From 189f6ed8e40946d27beb34166149f6145437a2a3 Mon Sep 17 00:00:00 2001
+From 84615dcaffefae35e2e7e388c8e4a4de746b6248 Mon Sep 17 00:00:00 2001
 From: Ismo Puustinen <ismo.puustinen@intel.com>
 Date: Wed, 6 Mar 2019 11:35:38 +0200
-Subject: [PATCH] Fix openssl header include paths.
+Subject: [PATCH 3/4] Fix openssl header include paths.
 
 ---
  .../utilities/osal/src/linux/user_space/openssl/crypto.h  | 8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/quickassist/utilities/osal/src/linux/user_space/openssl/crypto.h b/quickassist/utilities/osal/src/linux/user_space/openssl/crypto.h
-index b9ee95b..dba00c9 100644
+index 73a4b46..8d005a1 100644
 --- a/quickassist/utilities/osal/src/linux/user_space/openssl/crypto.h
 +++ b/quickassist/utilities/osal/src/linux/user_space/openssl/crypto.h
 @@ -73,14 +73,14 @@

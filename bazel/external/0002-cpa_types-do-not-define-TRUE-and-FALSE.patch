@@ -1,15 +1,16 @@
-From 2ee0db9d356bed280edfb49794fd5d0bb9002d5f Mon Sep 17 00:00:00 2001
+From 92c7cb0773cb4af29d4a7a7a840405029da50a01 Mon Sep 17 00:00:00 2001
 From: Ismo Puustinen <ismo.puustinen@intel.com>
 Date: Tue, 11 Dec 2018 12:58:14 +0200
-Subject: [PATCH] cpa_types: do not define TRUE and FALSE.
+Subject: [PATCH 2/4] cpa_types: do not define TRUE and FALSE.
 
 ---
  quickassist/include/cpa_types.h               | 19 ++-----------------
+ .../src/common/compression/dc_chain.c         |  4 ++--
  .../src/common/crypto/sym/lac_sym_alg_chain.c | 12 ++++++------
- 2 files changed, 8 insertions(+), 23 deletions(-)
+ 3 files changed, 10 insertions(+), 25 deletions(-)
 
 diff --git a/quickassist/include/cpa_types.h b/quickassist/include/cpa_types.h
-index 09fdda7..f3f5302 100644
+index 10824bf..c509611 100644
 --- a/quickassist/include/cpa_types.h
 +++ b/quickassist/include/cpa_types.h
 @@ -180,21 +180,6 @@ typedef int64_t Cpa64S;
@@ -45,8 +46,23 @@ index 09fdda7..f3f5302 100644
  } CpaBoolean;
  
  
+diff --git a/quickassist/lookaside/access_layer/src/common/compression/dc_chain.c b/quickassist/lookaside/access_layer/src/common/compression/dc_chain.c
+index 2cbcde1..85e2fa6 100644
+--- a/quickassist/lookaside/access_layer/src/common/compression/dc_chain.c
++++ b/quickassist/lookaside/access_layer/src/common/compression/dc_chain.c
+@@ -464,8 +464,8 @@ CpaStatus dcChainSession_PopulateSymSetupData(
+     {
+         case CPA_CY_SYM_OP_HASH:
+             pSessionDesc->laCmdId = ICP_QAT_FW_LA_CMD_AUTH;
+-            pSessionDesc->isCipher = FALSE;
+-            pSessionDesc->isAuth = TRUE;
++            pSessionDesc->isCipher = CPA_FALSE;
++            pSessionDesc->isAuth = CPA_TRUE;
+             pSessionDesc->isAuthEncryptOp = CPA_FALSE;
+             break;
+         default:
 diff --git a/quickassist/lookaside/access_layer/src/common/crypto/sym/lac_sym_alg_chain.c b/quickassist/lookaside/access_layer/src/common/crypto/sym/lac_sym_alg_chain.c
-index 0423577..3a5b0e5 100644
+index 00089b9..e0e3351 100644
 --- a/quickassist/lookaside/access_layer/src/common/crypto/sym/lac_sym_alg_chain.c
 +++ b/quickassist/lookaside/access_layer/src/common/crypto/sym/lac_sym_alg_chain.c
 @@ -1196,19 +1196,19 @@ CpaStatus LacAlgChain_SessionInit(
@@ -76,5 +92,5 @@ index 0423577..3a5b0e5 100644
              {
                  /* set up some useful shortcuts */
 -- 
-2.19.2
+2.20.1
 
