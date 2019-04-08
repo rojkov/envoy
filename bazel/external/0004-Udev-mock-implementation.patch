@@ -1,4 +1,4 @@
-From 160e102b51b22e4cabac424544ea5f80c1e4d506 Mon Sep 17 00:00:00 2001
+From bd62d5749d0a3a0f4c8f61ef4916a0c4cc4f7cb4 Mon Sep 17 00:00:00 2001
 From: Dmitry Rozhkov <dmitry.rozhkov@linux.intel.com>
 Date: Fri, 5 Apr 2019 11:51:05 +0300
 Subject: [PATCH 4/4] Udev mock implementation.
@@ -109,7 +109,7 @@ index 0000000..8b0fd45
 +const char *udev_device_get_syspath(struct udev_device *udev_device);
 diff --git a/quickassist/lookaside/access_layer/src/qat_direct/src/udev_mock.c b/quickassist/lookaside/access_layer/src/qat_direct/src/udev_mock.c
 new file mode 100644
-index 0000000..be5ca28
+index 0000000..501dac5
 --- /dev/null
 +++ b/quickassist/lookaside/access_layer/src/qat_direct/src/udev_mock.c
 @@ -0,0 +1,284 @@
@@ -270,9 +270,9 @@ index 0000000..be5ca28
 +  if (udev_device->n_ref > 0)
 +    return udev_device;
 +
-+  free(udev_device);
 +  free(udev_device->syspath);
 +  free(udev_device->last_sysattr_value);
++  free(udev_device);
 +  udev_device = NULL;
 +  return NULL;
 +}
