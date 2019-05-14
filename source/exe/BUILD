@@ -33,7 +33,7 @@ envoy_cc_binary(
 envoy_cc_library(
     name = "envoy_common_lib",
     deps = [
-        "//source/common/compressor:compressor_lib",
+        "//source/common/compressor:zlib_compressor_lib",
         "//source/common/decompressor:decompressor_lib",
         "//source/common/event:libevent_lib",
         "//source/common/network:utility_lib",
