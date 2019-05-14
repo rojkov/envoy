@@ -189,6 +189,7 @@ public:
     const std::string Chunked{"chunked"};
     const std::string Deflate{"deflate"};
     const std::string Gzip{"gzip"};
+    const std::string Brotli{"br"};
   } TransferEncodingValues;
 
   struct {
@@ -219,12 +220,14 @@ public:
 
   struct {
     const std::string Gzip{"gzip"};
+    const std::string Brotli{"br"};
     const std::string Identity{"identity"};
     const std::string Wildcard{"*"};
   } AcceptEncodingValues;
 
   struct {
     const std::string Gzip{"gzip"};
+    const std::string Brotli{"br"};
   } ContentEncodingValues;
 
   struct {
