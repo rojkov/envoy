@@ -21,7 +21,7 @@ void BrotliCompressorImpl::init(uint32_t quality, EncoderMode mode) {
   RELEASE_ASSERT(result == BROTLI_TRUE, "");
   result = BrotliEncoderSetParameter(state_.get(), BROTLI_PARAM_LGWIN, BROTLI_DEFAULT_WINDOW);
   RELEASE_ASSERT(result == BROTLI_TRUE, "");
-  result = BrotliEncoderSetParameter(state_.get(), BROTLI_PARAM_MODE, static_cast<BrotliEncoderMode>(mode));
+  result = BrotliEncoderSetParameter(state_.get(), BROTLI_PARAM_MODE, static_cast<uint32_t>(mode));
   RELEASE_ASSERT(result == BROTLI_TRUE, "");
 
   initialized_ = true;
