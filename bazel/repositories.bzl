@@ -157,6 +157,7 @@ def envoy_dependencies(skip_targets = []):
     _com_github_libevent_libevent()
     _com_github_luajit_luajit()
     _com_github_madler_zlib()
+    _org_brotli()
     _com_github_nanopb_nanopb()
     _com_github_nghttp2_nghttp2()
     _com_github_nodejs_http_parser()
@@ -328,6 +329,17 @@ def _com_github_madler_zlib():
     native.bind(
         name = "zlib",
         actual = "@envoy//bazel/foreign_cc:zlib",
+    )
+
+def _org_brotli():
+    location = REPOSITORY_LOCATIONS["org_brotli"]
+    http_archive(
+        name = "org_brotli",
+        **location
+    )
+    native.bind(
+        name = "brotli",
+        actual = "@org_brotli//:brotlienc"
     )
 
 def _com_github_nghttp2_nghttp2():
