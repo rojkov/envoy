@@ -50,7 +50,7 @@ struct CompressorStats {
   ALL_COMPRESSOR_STATS(GENERATE_COUNTER_STRUCT)
 };
 
-class CompressorFilterConfig {
+class CompressorFilterConfig : protected Logger::Loggable<Logger::Id::connection> {
 
 public:
   virtual std::unique_ptr<Compressor::Compressor> getInitializedCompressor() PURE;
@@ -65,13 +65,8 @@ public:
   const std::string contentEncoding() const { return content_encoding_; };
   const std::vector<std::string> registeredCompressors() const { return registered_compressors_; }
 
-  virtual ~CompressorFilterConfig() {
-    for (auto it = registered_compressors_.begin(); it != registered_compressors_.end(); it++) {
-      if (StringUtil::caseCompare(*it, content_encoding_)) {
-        // registered_compressors_.erase(it); // this segfaults!!!
-      }
-    }
-  };
+  virtual ~CompressorFilterConfig();
+
 protected:
   CompressorFilterConfig(const Protobuf::uint32 content_length,
                          const Protobuf::RepeatedPtrField<Envoy::ProtobufTypes::String>& content_types,

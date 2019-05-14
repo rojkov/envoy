@@ -13,7 +13,7 @@ namespace Brotli {
 /**
  * Configuration for the brotli filter.
  */
-class BrotliFilterConfig : public Common::CompressorFilterConfig, protected Logger::Loggable<Logger::Id::connection> {
+class BrotliFilterConfig : public Common::CompressorFilterConfig {
 public:
   BrotliFilterConfig(const envoy::config::filter::http::brotli::v2::Brotli& brotli,
                    const std::string& stats_prefix,

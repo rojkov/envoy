@@ -24,6 +24,15 @@ const std::vector<std::string>& defaultContentEncoding() {
 
 std::vector<std::string> CompressorFilterConfig::registered_compressors_;
 
+CompressorFilterConfig::~CompressorFilterConfig() {
+  // FIXME: It's possible that more than one filter of the same type can be registered.
+  //        If the configuration is dynamical then removing one filter can disable
+  //        all other filters of the same compression type.
+  registered_compressors_.erase(std::remove(registered_compressors_.begin(),
+                                            registered_compressors_.end(), content_encoding_),
+                                registered_compressors_.end());
+};
+
 StringUtil::CaseUnorderedSet CompressorFilterConfig::contentTypeSet(
     const Protobuf::RepeatedPtrField<Envoy::ProtobufTypes::String>& types) {
   return types.empty() ? StringUtil::CaseUnorderedSet(defaultContentEncoding().begin(),

@@ -14,7 +14,7 @@ namespace Gzip {
 /**
  * Configuration for the gzip filter.
  */
-class GzipFilterConfig : public Common::CompressorFilterConfig, protected Logger::Loggable<Logger::Id::connection> {
+class GzipFilterConfig : public Common::CompressorFilterConfig {
 
 public:
   GzipFilterConfig(const envoy::config::filter::http::gzip::v2::Gzip& gzip,
