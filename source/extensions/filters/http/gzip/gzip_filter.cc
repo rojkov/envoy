@@ -30,8 +30,8 @@ GzipFilterConfig::GzipFilterConfig(const envoy::config::filter::http::gzip::v2::
       compression_strategy_(compressionStrategyEnum(gzip.compression_strategy())),
       memory_level_(memoryLevelUint(gzip.memory_level().value())),
       window_bits_(windowBitsUint(gzip.window_bits().value())) {
-        ENVOY_LOG(warn, "** COMPRESSOR NAME: gzip");
-      }
+  ENVOY_LOG(warn, "** COMPRESSOR NAME: gzip");
+}
 
 Compressor::ZlibCompressorImpl::CompressionLevel GzipFilterConfig::compressionLevelEnum(
     envoy::config::filter::http::gzip::v2::Gzip_CompressionLevel_Enum compression_level) {

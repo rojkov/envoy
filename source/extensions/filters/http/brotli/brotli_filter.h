@@ -20,6 +20,7 @@ public:
                    const std::string& stats_prefix,
                    Stats::Scope& scope, Runtime::Loader& runtime);
 
+uint32_t quality() const { return quality_; };
 Compressor::BrotliCompressorImpl::EncoderMode encoderMode() const { return encoder_mode_; };
 
   std::unique_ptr<Compressor::Compressor> getInitializedCompressor() override;
@@ -29,6 +30,9 @@ private:
   static Compressor::BrotliCompressorImpl::EncoderMode encoderModeEnum(
       envoy::config::filter::http::brotli::v2::Brotli_EncoderMode encoder_mode);
 
+  static uint32_t qualityUint(Protobuf::uint32 quality);
+
+  uint32_t quality_;
   Compressor::BrotliCompressorImpl::EncoderMode encoder_mode_;
 };
 

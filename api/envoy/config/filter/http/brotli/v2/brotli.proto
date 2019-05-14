@@ -16,27 +16,12 @@ import "gogoproto/gogo.proto";
 // Brotli :ref:`configuration overview <config_http_filters_brotli>`.
 
 message Brotli {
-  // Value from 1 to 9 that controls the amount of internal memory used by zlib. Higher values
-  // use more memory, but are faster and produce better compression results. The default value is 5.
-  google.protobuf.UInt32Value memory_level = 1 [(validate.rules).uint32 = {gte: 1, lte: 9}];
+  // Value from 1 to 12 that controls the main compression speed-density lever.
+  // The higher quality, the slower compression. The default value is 12.
+  google.protobuf.UInt32Value quality = 1 [(validate.rules).uint32 = {gte: 1, lte: 12}];
 
   // Minimum response length, in bytes, which will trigger compression. The default value is 30.
   google.protobuf.UInt32Value content_length = 2 [(validate.rules).uint32.gte = 30];
-
-  message CompressionLevel {
-    enum Enum {
-      DEFAULT = 0;
-      BEST = 1;
-      SPEED = 2;
-    }
-  }
-
-  // A value used for selecting the zlib compression level. This setting will affect speed and
-  // amount of compression applied to the content. "BEST" provides higher compression at the cost of
-  // higher latency, "SPEED" provides lower compression with minimum impact on response time.
-  // "DEFAULT" provides an optimal result between speed and compression. This field will be set to
-  // "DEFAULT" if not specified.
-  CompressionLevel.Enum compression_level = 3 [(validate.rules).enum.defined_only = true];
 
   enum EncoderMode {
     DEFAULT = 0;
@@ -46,7 +31,7 @@ message Brotli {
   }
 
   // A value used to tune encoder for specific input. For more information about modes,
-  // please refer to brotli manual.
+  // please refer to brotli manual. This field will be set to "DEFAULT" if not specified.
   EncoderMode encoder_mode = 4 [(validate.rules).enum.defined_only = true];
 
   // Set of strings that allows specifying which mime-types yield compression; e.g.,
