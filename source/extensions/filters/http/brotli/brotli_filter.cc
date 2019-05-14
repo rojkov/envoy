@@ -11,7 +11,10 @@ namespace {
 const uint32_t DefaultQuality = 11;
 
 // Default and maximum compression window size.
-const uint64_t DefaultWindowBits = 12;
+const uint64_t DefaultWindowBits = 24;
+
+// Default and maximum compression input block size.
+const uint64_t DefaultInputBlockBits = 24;
 
 } // namespace
 
@@ -25,6 +28,7 @@ BrotliFilterConfig::BrotliFilterConfig(const envoy::config::filter::http::brotli
                              stats_prefix + "brotli.", scope, runtime, "br"),
       quality_(qualityUint(brotli.quality().value())),
       window_bits_(windowBitsUint(brotli.window_bits().value())),
+      input_block_bits_(inputBlockBitsUint(brotli.input_block_bits().value())),
       encoder_mode_(encoderModeEnum(brotli.encoder_mode())) {
   ENVOY_LOG(warn, "** COMPRESSOR NAME: brotli. mode: {}. window size {}", static_cast<uint32_t>(encoder_mode_), (1 << 12) - 16);
 }
@@ -51,9 +55,13 @@ uint32_t BrotliFilterConfig::windowBitsUint(Protobuf::uint32 window_bits) {
   return window_bits > 0 ? window_bits : DefaultWindowBits;
 }
 
+uint32_t BrotliFilterConfig::inputBlockBitsUint(Protobuf::uint32 input_block_bits) {
+  return input_block_bits > 0 ? input_block_bits : DefaultInputBlockBits;
+}
+
 std::unique_ptr<Compressor::Compressor> BrotliFilterConfig::getInitializedCompressor() {
   auto compressor = std::make_unique<Compressor::BrotliCompressorImpl>();
-  compressor->init(quality(), windowBits(), encoderMode());
+  compressor->init(quality(), windowBits(), inputBlockBits(), encoderMode());
   return compressor;
 }
 
