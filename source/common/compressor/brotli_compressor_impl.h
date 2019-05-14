@@ -30,7 +30,7 @@ class BrotliCompressorImpl : public Compressor, protected Logger::Loggable<Logge
 public:
   BrotliCompressorImpl();
 
-  enum class EncoderMode : uint64_t {
+  enum class EncoderMode : uint32_t {
     Generic = BROTLI_MODE_GENERIC,
     Text = BROTLI_MODE_TEXT,
     Font = BROTLI_MODE_FONT,
