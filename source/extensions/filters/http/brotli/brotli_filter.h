@@ -20,8 +20,9 @@ public:
                    const std::string& stats_prefix,
                    Stats::Scope& scope, Runtime::Loader& runtime);
 
-uint32_t quality() const { return quality_; };
-Compressor::BrotliCompressorImpl::EncoderMode encoderMode() const { return encoder_mode_; };
+  uint32_t quality() const { return quality_; };
+  uint32_t windowBits() const { return window_bits_; }
+  Compressor::BrotliCompressorImpl::EncoderMode encoderMode() const { return encoder_mode_; };
 
   std::unique_ptr<Compressor::Compressor> getInitializedCompressor() override;
   const std::string featureName() const override { return "brotli.feature_enabled"; };
@@ -31,8 +32,10 @@ private:
       envoy::config::filter::http::brotli::v2::Brotli_EncoderMode encoder_mode);
 
   static uint32_t qualityUint(Protobuf::uint32 quality);
+  static uint32_t windowBitsUint(Protobuf::uint32 window_bits);
 
   uint32_t quality_;
+  uint32_t window_bits_;
   Compressor::BrotliCompressorImpl::EncoderMode encoder_mode_;
 };
 
