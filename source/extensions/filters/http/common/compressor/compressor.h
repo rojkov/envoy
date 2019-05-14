@@ -73,16 +73,7 @@ protected:
                          const bool disable_on_etag_header,
                          const bool remove_accept_encoding_header,
                          const std::string& stats_prefix, Stats::Scope& scope, Runtime::Loader& runtime,
-                         const std::string content_encoding)
-    : content_length_(contentLengthUint(content_length)),
-      content_type_values_(contentTypeSet(content_types)),
-      disable_on_etag_header_(disable_on_etag_header),
-      remove_accept_encoding_header_(remove_accept_encoding_header),
-      stats_(generateStats(stats_prefix, scope)),
-      runtime_(runtime),
-      content_encoding_(content_encoding) {
-        registered_compressors_.push_back(content_encoding);
-      };
+                         const std::string content_encoding);
 
 private:
   static StringUtil::CaseUnorderedSet

@@ -12,7 +12,7 @@ BrotliCompressorImpl::BrotliCompressorImpl()
     : initialized_{false}, chunk_size_{4096},
       state_(BrotliEncoderCreateInstance(NULL, NULL, NULL), &BrotliEncoderDestroyInstance) {}
 
-void BrotliCompressorImpl::init() {
+void BrotliCompressorImpl::init(EncoderMode mode) {
   BROTLI_BOOL result(BROTLI_FALSE);
 
   ASSERT(initialized_ == false);
@@ -20,7 +20,7 @@ void BrotliCompressorImpl::init() {
   RELEASE_ASSERT(result == BROTLI_TRUE, "");
   result = BrotliEncoderSetParameter(state_.get(), BROTLI_PARAM_LGWIN, BROTLI_DEFAULT_WINDOW);
   RELEASE_ASSERT(result == BROTLI_TRUE, "");
-  result = BrotliEncoderSetParameter(state_.get(), BROTLI_PARAM_MODE, BROTLI_DEFAULT_MODE);
+  result = BrotliEncoderSetParameter(state_.get(), BROTLI_PARAM_MODE, static_cast<BrotliEncoderMode>(mode));
   RELEASE_ASSERT(result == BROTLI_TRUE, "");
 
   initialized_ = true;

@@ -38,20 +38,16 @@ message Brotli {
   // "DEFAULT" if not specified.
   CompressionLevel.Enum compression_level = 3 [(validate.rules).enum.defined_only = true];
 
-  enum CompressionStrategy {
+  enum EncoderMode {
     DEFAULT = 0;
-    FILTERED = 1;
-    HUFFMAN = 2;
-    RLE = 3;
+    GENERIC = 1;
+    TEXT = 2;
+    FONT = 3;
   }
 
-  // A value used for selecting the zlib compression strategy which is directly related to the
-  // characteristics of the content. Most of the time "DEFAULT" will be the best choice, though
-  // there are situations which changing this parameter might produce better results. For example,
-  // run-length encoding (RLE) is typically used when the content is known for having sequences
-  // which same data occurs many consecutive times. For more information about each strategy, please
-  // refer to zlib manual.
-  CompressionStrategy compression_strategy = 4 [(validate.rules).enum.defined_only = true];
+  // A value used to tune encoder for specific input. For more information about modes,
+  // please refer to brotli manual.
+  EncoderMode encoder_mode = 4 [(validate.rules).enum.defined_only = true];
 
   // Set of strings that allows specifying which mime-types yield compression; e.g.,
   // application/json, text/html, etc. When this field is not defined, compression will be applied

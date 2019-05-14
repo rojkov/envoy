@@ -1,7 +1,5 @@
 #include "extensions/filters/http/brotli/brotli_filter.h"
 
-#include "common/compressor/brotli_compressor_impl.h"
-
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
@@ -18,9 +16,23 @@ BrotliFilterConfig::BrotliFilterConfig(const envoy::config::filter::http::brotli
         ENVOY_LOG(warn, "** COMPRESSOR NAME: brotli");
       }
 
+Compressor::BrotliCompressorImpl::EncoderMode BrotliFilterConfig::encoderModeEnum(
+    envoy::config::filter::http::brotli::v2::Brotli_EncoderMode encoder_mode) {
+  switch (encoder_mode) {
+  case envoy::config::filter::http::brotli::v2::Brotli_EncoderMode::Brotli_EncoderMode_GENERIC:
+    return Compressor::BrotliCompressorImpl::EncoderMode::Generic;
+  case envoy::config::filter::http::brotli::v2::Brotli_EncoderMode::Brotli_EncoderMode_TEXT:
+    return Compressor::BrotliCompressorImpl::EncoderMode::Text;
+  case envoy::config::filter::http::brotli::v2::Brotli_EncoderMode::Brotli_EncoderMode_FONT:
+    return Compressor::BrotliCompressorImpl::EncoderMode::Font;
+  default:
+    return Compressor::BrotliCompressorImpl::EncoderMode::Default;
+  }
+}
+
 std::unique_ptr<Compressor::Compressor> BrotliFilterConfig::getInitializedCompressor() {
   auto compressor = std::make_unique<Compressor::BrotliCompressorImpl>();
-  compressor->init();
+  compressor->init(encoderMode());
   return compressor;
 }
 

@@ -30,11 +30,18 @@ class BrotliCompressorImpl : public Compressor, protected Logger::Loggable<Logge
 public:
   BrotliCompressorImpl();
 
+  enum class EncoderMode : uint64_t {
+    Generic = BROTLI_MODE_GENERIC,
+    Text = BROTLI_MODE_TEXT,
+    Font = BROTLI_MODE_FONT,
+    Default = BROTLI_DEFAULT_MODE,
+  };
+
   /**
    * Init must be called in order to initialize the compressor. Once compressor is initialized, it
    * cannot be initialized again. Init should run before compressing any data.
    */
-  void init();
+  void init(EncoderMode mode);
 
   // Compressor
   void compress(Buffer::Instance& buffer, State state) override;
