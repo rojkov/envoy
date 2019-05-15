@@ -16,7 +16,7 @@ TEST_F(BrotliCompressorImplTest, CallingFinishOnly) {
   Buffer::OwnedImpl buffer;
 
   BrotliCompressorImpl compressor;
-  compressor.init();
+  compressor.init(0, 22, 22, false, BrotliCompressorImpl::EncoderMode::Default);
   TestUtility::feedBufferWithRandomCharacters(buffer, 15096);
   compressor.compress(buffer, State::Finish);
   buffer.drain(buffer.length());
@@ -26,7 +26,7 @@ TEST_F(BrotliCompressorImplTest, CallingFlushOnly) {
   Buffer::OwnedImpl buffer;
 
   BrotliCompressorImpl compressor;
-  compressor.init();
+  compressor.init(0, 22, 22, false, BrotliCompressorImpl::EncoderMode::Default);
   TestUtility::feedBufferWithRandomCharacters(buffer, 15096);
   compressor.compress(buffer, State::Flush);
   buffer.drain(buffer.length());

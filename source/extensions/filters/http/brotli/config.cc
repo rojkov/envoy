@@ -11,10 +11,10 @@ namespace Brotli {
 Http::FilterFactoryCb BrotliFilterFactory::createFilterFactoryFromProtoTyped(
     const envoy::config::filter::http::brotli::v2::Brotli& proto_config,
     const std::string& stats_prefix, Server::Configuration::FactoryContext& context) {
-  Common::CompressorFilterConfigSharedPtr config = std::make_shared<BrotliFilterConfig>(
+  Common::Compressors::CompressorFilterConfigSharedPtr config = std::make_shared<BrotliFilterConfig>(
       proto_config, stats_prefix, context.scope(), context.runtime());
   return [config](Http::FilterChainFactoryCallbacks& callbacks) -> void {
-    callbacks.addStreamFilter(std::make_shared<Common::CompressorFilter>(config));
+    callbacks.addStreamFilter(std::make_shared<Common::Compressors::CompressorFilter>(config));
   };
 }
 

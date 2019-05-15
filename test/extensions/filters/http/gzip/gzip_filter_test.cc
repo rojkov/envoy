@@ -51,10 +51,6 @@ protected:
     return filter_->isAcceptEncodingAllowed(headers);
   }
 
-  std::string acceptedEncoding(Http::HeaderMap& headers) {
-    return filter_->acceptedEncoding(headers);
-  }
-
   bool isMinimumContentLength(Http::HeaderMap& headers) {
     return filter_->isMinimumContentLength(headers);
   }
@@ -196,49 +192,6 @@ TEST_F(GzipFilterTest, hasCacheControlNoTransformCompression) {
   doRequest({{":method", "get"}, {"accept-encoding", "gzip, deflate"}}, true);
   doResponseCompression(
       {{":method", "get"}, {"content-length", "256"}, {"cache-control", "no-cache"}});
-}
-
-TEST_F(GzipFilterTest, acceptedEncoding) {
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, gzip, br"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, br, gzip"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", ""}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, garbage;q=0, identity;q=0.50 , br;q=0.75, xz;q=0.75, gzip"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, garbage;q=0, identity; q = 0.50 , xz;q=0.75, br;q=0.75, gzip"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, garbage;q=0, identity; q = 0.50 , xz;q=0.75, br;q=0.75, gzip, arj;trsh=2"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, garbage;q=0, identity; q = 0 , xz;q=0.75, arj;trsh=2"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "arj, *;q=0"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "arj, *;q=0, identity"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
-  {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "arj"}};
-    std::cout << acceptedEncoding(headers) << std::endl;
-  }
 }
 
 // Verifies isAcceptEncodingAllowed function.

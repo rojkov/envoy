@@ -10,10 +10,10 @@ namespace Gzip {
 Http::FilterFactoryCb GzipFilterFactory::createFilterFactoryFromProtoTyped(
     const envoy::config::filter::http::gzip::v2::Gzip& proto_config,
     const std::string& stats_prefix, Server::Configuration::FactoryContext& context) {
-  Common::CompressorFilterConfigSharedPtr config = std::make_shared<GzipFilterConfig>(
+  Common::Compressors::CompressorFilterConfigSharedPtr config = std::make_shared<GzipFilterConfig>(
       proto_config, stats_prefix, context.scope(), context.runtime());
   return [config](Http::FilterChainFactoryCallbacks& callbacks) -> void {
-    callbacks.addStreamFilter(std::make_shared<Common::CompressorFilter>(config));
+    callbacks.addStreamFilter(std::make_shared<Common::Compressors::CompressorFilter>(config));
   };
 }
 

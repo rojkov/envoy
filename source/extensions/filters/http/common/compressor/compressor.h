@@ -16,6 +16,7 @@ namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
 namespace Common {
+namespace Compressors {
 
 /**
  * All compressor filter stats. @see stats_macros.h
@@ -158,6 +159,7 @@ private:
   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};
 };
 
+} // namespace Compressors
 } // namespace Common
 } // namespace HttpFilters
 } // namespace Extensions

@@ -6,6 +6,7 @@ namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
 namespace Common {
+namespace Compressors {
 
 namespace {
 
@@ -278,6 +279,7 @@ void CompressorFilter::sanitizeEtagHeader(Http::HeaderMap& headers) {
   }
 }
 
+} // namespace Compressors
 } // namespace Common
 } // namespace HttpFilters
 } // namespace Extensions
