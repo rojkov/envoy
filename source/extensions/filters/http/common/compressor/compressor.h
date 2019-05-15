@@ -53,7 +53,7 @@ struct CompressorStats {
 class CompressorFilterConfig : protected Logger::Loggable<Logger::Id::connection> {
 
 public:
-  virtual std::unique_ptr<Compressor::Compressor> getInitializedCompressor() PURE;
+  virtual std::unique_ptr<Compressor::Compressor> makeCompressor() PURE;
   virtual const std::string featureName() const PURE;
 
   Runtime::Loader& runtime() { return runtime_; }

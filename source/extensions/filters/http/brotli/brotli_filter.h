@@ -26,7 +26,7 @@ public:
   bool disableLiteralContextModeling() const { return disable_literal_context_modeling_; }
   Compressor::BrotliCompressorImpl::EncoderMode encoderMode() const { return encoder_mode_; };
 
-  std::unique_ptr<Compressor::Compressor> getInitializedCompressor() override;
+  std::unique_ptr<Compressor::Compressor> makeCompressor() override;
   const std::string featureName() const override { return "brotli.feature_enabled"; };
 
 private:

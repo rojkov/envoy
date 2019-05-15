@@ -30,7 +30,7 @@ public:
 
   uint64_t memoryLevel() const { return memory_level_; }
   uint64_t windowBits() const { return window_bits_; }
-  std::unique_ptr<Compressor::Compressor> getInitializedCompressor() override;
+  std::unique_ptr<Compressor::Compressor> makeCompressor() override;
   const std::string featureName() const override { return "gzip.feature_enabled"; };
 
 private:

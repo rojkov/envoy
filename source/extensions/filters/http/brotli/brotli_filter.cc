@@ -60,7 +60,7 @@ uint32_t BrotliFilterConfig::inputBlockBitsUint(Protobuf::uint32 input_block_bit
   return input_block_bits > 0 ? input_block_bits : DefaultInputBlockBits;
 }
 
-std::unique_ptr<Compressor::Compressor> BrotliFilterConfig::getInitializedCompressor() {
+std::unique_ptr<Compressor::Compressor> BrotliFilterConfig::makeCompressor() {
   auto compressor = std::make_unique<Compressor::BrotliCompressorImpl>();
   compressor->init(quality(), windowBits(), inputBlockBits(), disableLiteralContextModeling(), encoderMode());
   return compressor;

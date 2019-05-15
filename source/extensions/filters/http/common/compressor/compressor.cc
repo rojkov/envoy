@@ -65,7 +65,7 @@ CompressorFilter::CompressorFilter(const CompressorFilterConfigSharedPtr& config
 
 Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::HeaderMap& headers, bool) {
   if (config_->runtime().snapshot().featureEnabled(config_->featureName(), 100) && isAcceptEncodingAllowed(headers)) {
-    compressor_ = config_->getInitializedCompressor();
+    compressor_ = config_->makeCompressor();
     skip_compression_ = false;
     if (config_->removeAcceptEncodingHeader()) {
       headers.removeAcceptEncoding();

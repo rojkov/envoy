@@ -72,7 +72,7 @@ uint64_t GzipFilterConfig::windowBitsUint(Protobuf::uint32 window_bits) {
   return (window_bits > 0 ? window_bits : DefaultWindowBits) | GzipHeaderValue;
 }
 
-std::unique_ptr<Compressor::Compressor> GzipFilterConfig::getInitializedCompressor() {
+std::unique_ptr<Compressor::Compressor> GzipFilterConfig::makeCompressor() {
   auto compressor = std::make_unique<Compressor::ZlibCompressorImpl>();
   compressor->init(compressionLevel(), compressionStrategy(), windowBits(), memoryLevel());
   return compressor;
