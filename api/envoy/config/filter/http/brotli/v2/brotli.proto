@@ -58,4 +58,8 @@ message Brotli {
   // Larger input block results in better compression at the expense of memory usage. The default is 24.
   // For more details about this parameter, please refer to brotli manual.
   google.protobuf.UInt32Value input_block_bits = 8 [(validate.rules).uint32 = {gte: 16, lte: 24}];
+
+  // If true, disables "literal context modeling" format feature.
+  // This flag is a "decoding-speed vs compression ratio" trade-off.
+  bool disable_literal_context_modeling = 9;
 }

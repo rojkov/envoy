@@ -29,6 +29,7 @@ BrotliFilterConfig::BrotliFilterConfig(const envoy::config::filter::http::brotli
       quality_(qualityUint(brotli.quality().value())),
       window_bits_(windowBitsUint(brotli.window_bits().value())),
       input_block_bits_(inputBlockBitsUint(brotli.input_block_bits().value())),
+      disable_literal_context_modeling_(brotli.disable_literal_context_modeling()),
       encoder_mode_(encoderModeEnum(brotli.encoder_mode())) {
   ENVOY_LOG(warn, "** COMPRESSOR NAME: brotli. mode: {}. window size {}", static_cast<uint32_t>(encoder_mode_), (1 << 12) - 16);
 }
@@ -61,7 +62,7 @@ uint32_t BrotliFilterConfig::inputBlockBitsUint(Protobuf::uint32 input_block_bit
 
 std::unique_ptr<Compressor::Compressor> BrotliFilterConfig::getInitializedCompressor() {
   auto compressor = std::make_unique<Compressor::BrotliCompressorImpl>();
-  compressor->init(quality(), windowBits(), inputBlockBits(), encoderMode());
+  compressor->init(quality(), windowBits(), inputBlockBits(), disableLiteralContextModeling(), encoderMode());
   return compressor;
 }
 

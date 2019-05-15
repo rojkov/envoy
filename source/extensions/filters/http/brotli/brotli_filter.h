@@ -23,6 +23,7 @@ public:
   uint32_t quality() const { return quality_; };
   uint32_t windowBits() const { return window_bits_; }
   uint32_t inputBlockBits() const { return input_block_bits_; }
+  bool disableLiteralContextModeling() const { return disable_literal_context_modeling_; }
   Compressor::BrotliCompressorImpl::EncoderMode encoderMode() const { return encoder_mode_; };
 
   std::unique_ptr<Compressor::Compressor> getInitializedCompressor() override;
@@ -39,6 +40,7 @@ private:
   uint32_t quality_;
   uint32_t window_bits_;
   uint32_t input_block_bits_;
+  bool disable_literal_context_modeling_;
   Compressor::BrotliCompressorImpl::EncoderMode encoder_mode_;
 };
 

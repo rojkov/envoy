@@ -41,7 +41,7 @@ public:
    * Init must be called in order to initialize the compressor. Once compressor is initialized, it
    * cannot be initialized again. Init should run before compressing any data.
    */
-  void init(uint32_t quality, uint32_t windowBits, uint32_t inputBlockBits, EncoderMode mode);
+  void init(const uint32_t quality, const uint32_t windowBits, const uint32_t inputBlockBits, const bool disableLiteralContextModeling, const EncoderMode mode);
 
   // Compressor
   void compress(Buffer::Instance& buffer, State state) override;
