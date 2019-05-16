@@ -30,7 +30,8 @@ public:
                              stats_prefix + "test.", scope, runtime, "test") {}
 
   MOCK_METHOD0(makeCompressor, std::unique_ptr<Compressor::Compressor>());
-  MOCK_CONST_METHOD0(featureName, const std::string());
+  //MOCK_CONST_METHOD0(featureName, const std::string());
+  const std::string featureName() const { return "test.filter_enabled"; }
 };
 
 class CompressorFilterTestFixture : public testing::Test {
@@ -49,7 +50,16 @@ protected:
   NiceMock<Runtime::MockLoader> runtime_;
 };
 
-TEST_F(CompressorFilterTestFixture, HelloWorld) {}
+// Test if Runtime Feature is Disabled
+TEST_F(CompressorFilterTestFixture, RuntimeDisabled) {
+  SetUpFilter("{}");
+  EXPECT_CALL(runtime_.snapshot_, featureEnabled("test.filter_enabled", 100))
+      .WillOnce(Return(false));
+
+  Http::TestHeaderMapImpl headers{{":method", "get"}, {"accept-encoding", "deflate, gzip"}};
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, false));
+  EXPECT_EQ(1, stats_.counter("test.test.not_compressed").value());
+}
 
 } // namespace Compressors
 } // namespace Common
