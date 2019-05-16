@@ -54,6 +54,8 @@ struct CompressorStats {
 class CompressorFilterConfig : protected Logger::Loggable<Logger::Id::connection> {
 
 public:
+  CompressorFilterConfig() = delete;
+
   virtual std::unique_ptr<Compressor::Compressor> makeCompressor() PURE;
   virtual const std::string featureName() const PURE;
 
