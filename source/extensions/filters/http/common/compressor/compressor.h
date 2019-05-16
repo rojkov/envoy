@@ -141,7 +141,7 @@ public:
 private:
   // TODO(gsagula): This is here temporarily and just to facilitate testing. Ideally all
   // the logic in these private member functions would be available in another class.
-  friend class GzipFilterTest;
+  friend class CompressorFilterTest;
   bool hasCacheControlNoTransform(Http::HeaderMap& headers) const;
   bool isAcceptEncodingAllowed(const Http::HeaderMap& headers) const;
   bool isContentTypeAllowed(Http::HeaderMap& headers) const;

@@ -163,7 +163,7 @@ TEST_F(GzipFilterTest, AcceptanceGzipEncoding) {
   doResponseCompression({{":method", "get"}, {"content-length", "256"}});
 }
 
-// Verifies isAcceptEncodingAllowed function.
+// Verifies hasCacheControlNoTransform function.
 TEST_F(GzipFilterTest, hasCacheControlNoTransform) {
   {
     Http::TestHeaderMapImpl headers = {{"cache-control", "no-cache"}};

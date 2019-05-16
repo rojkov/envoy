@@ -46,6 +46,34 @@ protected:
         .WillByDefault(Return(true));
   }
 
+  // CompressorFilter private member functions
+  void sanitizeEtagHeader(Http::HeaderMap& headers) { filter_->sanitizeEtagHeader(headers); }
+
+  void insertVaryHeader(Http::HeaderMap& headers) { filter_->insertVaryHeader(headers); }
+
+  bool isContentTypeAllowed(Http::HeaderMap& headers) {
+    return filter_->isContentTypeAllowed(headers);
+  }
+
+  bool isEtagAllowed(Http::HeaderMap& headers) { return filter_->isEtagAllowed(headers); }
+
+  bool hasCacheControlNoTransform(Http::HeaderMap& headers) {
+    return filter_->hasCacheControlNoTransform(headers);
+  }
+
+  bool isAcceptEncodingAllowed(Http::HeaderMap& headers) {
+    return filter_->isAcceptEncodingAllowed(headers);
+  }
+
+  bool isMinimumContentLength(Http::HeaderMap& headers) {
+    return filter_->isMinimumContentLength(headers);
+  }
+
+  bool isTransferEncodingAllowed(Http::HeaderMap& headers) {
+    return filter_->isTransferEncodingAllowed(headers);
+  }
+
+  // CompressorFilterTest Helpers
   void SetUpFilter(std::string&& json) {
     Json::ObjectSharedPtr config = Json::Factory::loadFromString(json);
     test::extensions::filters::http::common::compressor::Mock mock;
@@ -140,6 +168,39 @@ TEST_F(CompressorFilterTest, AcceptanceTestEncoding) {
   Http::TestHeaderMapImpl trailers;
   EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->decodeTrailers(trailers));
   doResponseCompression({{":method", "get"}, {"content-length", "256"}});
+}
+
+// Verifies hasCacheControlNoTransform function.
+TEST_F(CompressorFilterTest, hasCacheControlNoTransform) {
+  {
+    Http::TestHeaderMapImpl headers = {{"cache-control", "no-cache"}};
+    EXPECT_FALSE(hasCacheControlNoTransform(headers));
+  }
+  {
+    Http::TestHeaderMapImpl headers = {{"cache-control", "no-transform"}};
+    EXPECT_TRUE(hasCacheControlNoTransform(headers));
+  }
+  {
+    Http::TestHeaderMapImpl headers = {{"cache-control", "No-Transform"}};
+    EXPECT_TRUE(hasCacheControlNoTransform(headers));
+  }
+}
+
+// Verifies that compression is skipped when cache-control header has no-transform value.
+TEST_F(CompressorFilterTest, hasCacheControlNoTransformNoCompression) {
+  SetUpFilter("{}");
+  doRequest({{":method", "get"}, {"accept-encoding", "test;q=0, deflate"}}, true);
+  doResponseNoCompression(
+      {{":method", "get"}, {"content-length", "256"}, {"cache-control", "no-transform"}});
+}
+
+// Verifies that compression is NOT skipped when cache-control header does NOT have no-transform
+// value.
+TEST_F(CompressorFilterTest, hasCacheControlNoTransformCompression) {
+  SetUpFilter("{}");
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  doResponseCompression(
+      {{":method", "get"}, {"content-length", "256"}, {"cache-control", "no-cache"}});
 }
 
 } // namespace Compressors
