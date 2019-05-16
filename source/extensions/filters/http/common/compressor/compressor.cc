@@ -57,7 +57,7 @@ StringUtil::CaseUnorderedSet CompressorFilterConfig::contentTypeSet(
                        : StringUtil::CaseUnorderedSet(types.cbegin(), types.cend());
 }
 
-uint64_t CompressorFilterConfig::contentLengthUint(Protobuf::uint32 length) {
+uint32_t CompressorFilterConfig::contentLengthUint(Protobuf::uint32 length) {
   return length >= MinimumContentLength ? length : MinimumContentLength;
 }
 

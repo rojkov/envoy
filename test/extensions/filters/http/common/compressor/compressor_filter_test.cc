@@ -18,6 +18,10 @@ namespace HttpFilters {
 namespace Common {
 namespace Compressors {
 
+class MockCompressor : public Compressor::Compressor {
+  void compress(Buffer::Instance&, ::Envoy::Compressor::State) {}
+};
+
 class MockCompressorFilterConfig : public CompressorFilterConfig {
 public:
   MockCompressorFilterConfig(const test::extensions::filters::http::common::compressor::Mock& mock,
@@ -29,13 +33,19 @@ public:
                              mock.remove_accept_encoding_header(),
                              stats_prefix + "test.", scope, runtime, "test") {}
 
-  MOCK_METHOD0(makeCompressor, std::unique_ptr<Compressor::Compressor>());
+  // MOCK_METHOD0(makeCompressor, std::unique_ptr<Compressor::Compressor>());
   //MOCK_CONST_METHOD0(featureName, const std::string());
+  std::unique_ptr<Compressor::Compressor> makeCompressor() { return std::make_unique<MockCompressor>(); }
   const std::string featureName() const { return "test.filter_enabled"; }
 };
 
-class CompressorFilterTestFixture : public testing::Test {
+class CompressorFilterTest : public testing::Test {
 protected:
+  CompressorFilterTest() {
+    ON_CALL(runtime_.snapshot_, featureEnabled("test.filter_enabled", 100))
+        .WillByDefault(Return(true));
+  }
+
   void SetUpFilter(std::string&& json) {
     Json::ObjectSharedPtr config = Json::Factory::loadFromString(json);
     test::extensions::filters::http::common::compressor::Mock mock;
@@ -44,21 +54,92 @@ protected:
     filter_ = std::make_unique<CompressorFilter>(config_);
   }
 
+  void verifyCompressedData() {
+    //std::cout << "IIII: " << expected_str_.length() << " data:" << data_.length() << std::endl;
+    EXPECT_EQ(expected_str_.length(), stats_.counter("test.test.total_uncompressed_bytes").value());
+    EXPECT_EQ(data_.length(), stats_.counter("test.test.total_compressed_bytes").value());
+  }
+
+  void feedBuffer(uint64_t size) {
+    TestUtility::feedBufferWithRandomCharacters(data_, size);
+    expected_str_ += data_.toString();
+  }
+
+  void drainBuffer() {
+    const uint64_t data_len = data_.length();
+    data_.drain(data_len);
+  }
+
+  void doRequest(Http::TestHeaderMapImpl&& headers, bool end_stream) {
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, end_stream));
+  }
+
+  void doResponseCompression(Http::TestHeaderMapImpl&& headers) {
+    uint64_t content_length;
+    ASSERT_TRUE(absl::SimpleAtoi(headers.get_("content-length"), &content_length));
+    feedBuffer(content_length);
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
+    EXPECT_EQ("", headers.get_("content-length"));
+    EXPECT_EQ("test", headers.get_("content-encoding"));
+    EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, true));
+    verifyCompressedData();
+    drainBuffer();
+    EXPECT_EQ(1U, stats_.counter("test.test.compressed").value());
+  }
+
+  void doResponseNoCompression(Http::TestHeaderMapImpl&& headers) {
+    uint64_t content_length;
+    ASSERT_TRUE(absl::SimpleAtoi(headers.get_("content-length"), &content_length));
+    feedBuffer(content_length);
+    Http::TestHeaderMapImpl continue_headers;
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue,
+              filter_->encode100ContinueHeaders(continue_headers));
+    Http::MetadataMap metadata_map{{"metadata", "metadata"}};
+    EXPECT_EQ(Http::FilterMetadataStatus::Continue, filter_->encodeMetadata(metadata_map));
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
+    EXPECT_EQ("", headers.get_("content-encoding"));
+    EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, false));
+    Http::TestHeaderMapImpl trailers;
+    EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->encodeTrailers(trailers));
+    EXPECT_EQ(1, stats_.counter("test.test.not_compressed").value());
+  }
+
   CompressorFilterConfigSharedPtr config_;
   std::unique_ptr<CompressorFilter> filter_;
+  Buffer::OwnedImpl data_;
+  std::string expected_str_;
   Stats::IsolatedStoreImpl stats_;
   NiceMock<Runtime::MockLoader> runtime_;
 };
 
 // Test if Runtime Feature is Disabled
-TEST_F(CompressorFilterTestFixture, RuntimeDisabled) {
+TEST_F(CompressorFilterTest, DecodeHeadersWithRuntimeDisabled) {
   SetUpFilter("{}");
   EXPECT_CALL(runtime_.snapshot_, featureEnabled("test.filter_enabled", 100))
       .WillOnce(Return(false));
 
-  Http::TestHeaderMapImpl headers{{":method", "get"}, {"accept-encoding", "deflate, gzip"}};
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, false));
-  EXPECT_EQ(1, stats_.counter("test.test.not_compressed").value());
+  doRequest({{":method", "get"}, {"accept-encoding", "deflate, test"}}, false);
+  doResponseNoCompression({{":method", "get"}, {"content-length", "256"}});
+}
+
+// Default config values.
+TEST_F(CompressorFilterTest, DefaultConfigValues) {
+  SetUpFilter("{}");
+  EXPECT_EQ(30, config_->minimumLength());
+  EXPECT_EQ(false, config_->disableOnEtagHeader());
+  EXPECT_EQ(false, config_->removeAcceptEncodingHeader());
+  EXPECT_EQ(8, config_->contentTypeValues().size());
+}
+
+// Acceptance Testing with default configuration.
+TEST_F(CompressorFilterTest, AcceptanceTestEncoding) {
+  SetUpFilter("{}");
+  doRequest({{":method", "get"}, {"accept-encoding", "deflate, test"}}, false);
+  Buffer::OwnedImpl data("hello");
+  EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->decodeData(data, false));
+  Http::TestHeaderMapImpl trailers;
+  EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->decodeTrailers(trailers));
+  doResponseCompression({{":method", "get"}, {"content-length", "256"}});
 }
 
 } // namespace Compressors

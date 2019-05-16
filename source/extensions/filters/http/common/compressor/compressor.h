@@ -64,7 +64,7 @@ public:
   const StringUtil::CaseUnorderedSet& contentTypeValues() const { return content_type_values_; }
   bool disableOnEtagHeader() const { return disable_on_etag_header_; }
   bool removeAcceptEncodingHeader() const { return remove_accept_encoding_header_; }
-  uint64_t minimumLength() const { return content_length_; }
+  uint32_t minimumLength() const { return content_length_; }
   const std::string contentEncoding() const { return content_encoding_; };
   const std::vector<std::string> registeredCompressors() const { return registered_compressors_; }
 
@@ -82,13 +82,13 @@ private:
   static StringUtil::CaseUnorderedSet
   contentTypeSet(const Protobuf::RepeatedPtrField<Envoy::ProtobufTypes::String>& types);
 
-  static uint64_t contentLengthUint(Protobuf::uint32 length);
+  static uint32_t contentLengthUint(Protobuf::uint32 length);
 
   static CompressorStats generateStats(const std::string& prefix, Stats::Scope& scope) {
     return CompressorStats{ALL_COMPRESSOR_STATS(POOL_COUNTER_PREFIX(scope, prefix))};
   }
 
-  int32_t content_length_;
+  uint32_t content_length_;
 
   StringUtil::CaseUnorderedSet content_type_values_;
   bool disable_on_etag_header_;

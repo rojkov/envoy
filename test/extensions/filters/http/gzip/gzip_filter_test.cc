@@ -121,8 +121,8 @@ protected:
     EXPECT_EQ(1, stats_.counter("test.gzip.not_compressed").value());
   }
 
-  GzipFilterConfigSharedPtr config_;
-  std::unique_ptr<GzipFilter> filter_;
+  Common::Compressors::CompressorFilterConfigSharedPtr config_;
+  std::unique_ptr<Common::Compressors::CompressorFilter> filter_;
   Buffer::OwnedImpl data_;
   Decompressor::ZlibDecompressorImpl decompressor_;
   Buffer::OwnedImpl decompressed_data_;
