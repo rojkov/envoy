@@ -42,12 +42,9 @@ CompressorFilterConfig::CompressorFilterConfig(const Protobuf::uint32 content_le
 }
 
 CompressorFilterConfig::~CompressorFilterConfig() {
-  // FIXME: It's possible that more than one filter of the same type can be registered.
-  //        If the configuration is dynamical then removing one filter can disable
-  //        all other filters of the same compression type.
-  registered_compressors_.erase(std::remove(registered_compressors_.begin(),
-                                            registered_compressors_.end(), content_encoding_),
-                                registered_compressors_.end());
+  auto result = std::find(registered_compressors_.begin(), registered_compressors_.end(), content_encoding_);
+  ASSERT(result != registered_compressors_.end());
+  registered_compressors_.erase(result);
 }
 
 StringUtil::CaseUnorderedSet CompressorFilterConfig::contentTypeSet(
