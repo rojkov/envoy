@@ -88,6 +88,8 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
   typedef std::pair<absl::string_view, float> encPair; // pair of {encoding, q_value}
   std::vector<encPair> pairs;
 
+  std::vector<std::string> allowed_compressors = config_->registeredCompressors();
+
   for (const auto token : StringUtil::splitToken(accept_encoding->value().getStringView(), ",", false /* keep_empty */)) {
       encPair pair = std::make_pair(StringUtil::trim(StringUtil::cropRight(token, ";")), 1);
       const auto params = StringUtil::cropLeft(token, ";");
@@ -98,18 +100,25 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
           ASSERT(absl::SimpleAtof(StringUtil::trim(q_value), &pair.second));
         }
       }
+
       pairs.push_back(pair);
+
+      if (!pair.second) {
+        allowed_compressors.erase(std::remove(allowed_compressors.begin(),
+                                              allowed_compressors.end(), pair.first),
+                                  allowed_compressors.end());
+      }
+  }
+
+  if (pairs.size() == 0) {
+      // If the Accept-Encoding field-value is empty, then only the "identity" encoding is acceptable.
+      config_->stats().header_not_valid_.inc();
+      return false;
   }
 
   std::sort(pairs.begin(), pairs.end(), [](const encPair &a, const encPair &b) -> bool {
     return a.second > b.second;
   });
-
-  if (pairs.size() == 0) {
-      // If the Accept-Encoding field-value is empty, then only the "identity" encoding is acceptable.
-      config_->stats().header_identity_.inc();
-      return false;
-  }
 
   for (const auto pair : pairs) {
     for (const auto compr : config_->registeredCompressors()) {
@@ -138,9 +147,9 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
 
     // If wildcard is given then use which ever compressor is registered first.
     if (pair.first == Http::Headers::get().AcceptEncodingValues.Wildcard) {
-      if (pair.second > 0) {
+      if (pair.second > 0 && allowed_compressors.size() > 0) {
         config_->stats().header_wildcard_.inc();
-        return StringUtil::caseCompare(config_->contentEncoding(), config_->registeredCompressors()[0]);
+        return StringUtil::caseCompare(config_->contentEncoding(), allowed_compressors[0]);
       } else {
         config_->stats().header_not_valid_.inc();
         return false;
@@ -148,9 +157,7 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
     }
   }
 
-  // As per https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3
-  // "The 'identity' content-coding is always acceptable, unless specifically refused".
-  config_->stats().header_identity_.inc();
+  config_->stats().header_not_valid_.inc();
   return false;
 }
 
