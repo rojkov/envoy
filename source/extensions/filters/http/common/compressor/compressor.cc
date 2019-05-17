@@ -242,7 +242,9 @@ bool CompressorFilter::isTransferEncodingAllowed(Http::HeaderMap& headers) const
          // computed twice. Find all other sites where this can be improved.
          StringUtil::splitToken(transfer_encoding->value().getStringView(), ",", true)) {
       const auto trimmed_value = StringUtil::trim(header_value);
-      if (StringUtil::caseCompare(trimmed_value,
+      if (StringUtil::caseCompare(trimmed_value, config_->contentEncoding()) ||
+          // or any other compression type known to Envoy
+          StringUtil::caseCompare(trimmed_value,
                                   Http::Headers::get().TransferEncodingValues.Gzip) ||
           StringUtil::caseCompare(trimmed_value,
                                   Http::Headers::get().TransferEncodingValues.Brotli) ||

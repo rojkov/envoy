@@ -612,16 +612,16 @@ TEST_F(CompressorFilterTest, TransferEncodingChunked) {
 }
 
 // Tests compression when Transfer-Encoding header exists.
-TEST_F(GzipFilterTest, AcceptanceTransferEncodingGzip) {
+TEST_F(CompressorFilterTest, AcceptanceTransferEncoding) {
 
-  doRequest({{":method", "get"}, {"accept-encoding", "gzip"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   doResponseNoCompression(
       {{":method", "get"}, {"content-length", "256"}, {"transfer-encoding", "chunked, deflate"}});
 }
 
 // Content-Encoding: upstream response is already encoded.
-TEST_F(GzipFilterTest, ContentEncodingAlreadyEncoded) {
-  doRequest({{":method", "get"}, {"accept-encoding", "gzip"}}, true);
+TEST_F(CompressorFilterTest, ContentEncodingAlreadyEncoded) {
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   Http::TestHeaderMapImpl response_headers{
       {":method", "get"}, {"content-length", "256"}, {"content-encoding", "deflate, gzip"}};
   feedBuffer(256);
@@ -632,7 +632,7 @@ TEST_F(GzipFilterTest, ContentEncodingAlreadyEncoded) {
 }
 
 // No compression when upstream response is empty.
-TEST_F(GzipFilterTest, EmptyResponse) {
+TEST_F(CompressorFilterTest, EmptyResponse) {
 
   Http::TestHeaderMapImpl headers{{":method", "get"}, {":status", "204"}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, true));
@@ -642,7 +642,7 @@ TEST_F(GzipFilterTest, EmptyResponse) {
 }
 
 // Verifies insertVaryHeader function.
-TEST_F(GzipFilterTest, insertVaryHeader) {
+TEST_F(CompressorFilterTest, insertVaryHeader) {
   {
     Http::TestHeaderMapImpl headers = {};
     insertVaryHeader(headers);
@@ -671,8 +671,8 @@ TEST_F(GzipFilterTest, insertVaryHeader) {
 }
 
 // Filter should set Vary header value with `accept-encoding`.
-TEST_F(GzipFilterTest, NoVaryHeader) {
-  doRequest({{":method", "get"}, {"accept-encoding", "gzip"}}, true);
+TEST_F(CompressorFilterTest, NoVaryHeader) {
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   Http::TestHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   feedBuffer(256);
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
@@ -681,8 +681,8 @@ TEST_F(GzipFilterTest, NoVaryHeader) {
 }
 
 // Filter should set Vary header value with `accept-encoding` and preserve other values.
-TEST_F(GzipFilterTest, VaryOtherValues) {
-  doRequest({{":method", "get"}, {"accept-encoding", "gzip"}}, true);
+TEST_F(CompressorFilterTest, VaryOtherValues) {
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   Http::TestHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"vary", "User-Agent, Cookie"}};
   feedBuffer(256);
@@ -692,8 +692,8 @@ TEST_F(GzipFilterTest, VaryOtherValues) {
 }
 
 // Vary header should have only one `accept-encoding`value.
-TEST_F(GzipFilterTest, VaryAlreadyHasAcceptEncoding) {
-  doRequest({{":method", "get"}, {"accept-encoding", "gzip"}}, true);
+TEST_F(CompressorFilterTest, VaryAlreadyHasAcceptEncoding) {
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   Http::TestHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"vary", "accept-encoding"}};
   feedBuffer(256);
@@ -703,20 +703,21 @@ TEST_F(GzipFilterTest, VaryAlreadyHasAcceptEncoding) {
 }
 
 // Verify removeAcceptEncoding header.
-TEST_F(GzipFilterTest, RemoveAcceptEncodingHeader) {
+TEST_F(CompressorFilterTest, RemoveAcceptEncodingHeader) {
   {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, gzip, br"}};
+    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, test, gzip, br"}};
     setUpFilter(R"EOF({"remove_accept_encoding_header": true})EOF");
     EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, true));
     EXPECT_FALSE(headers.has("accept-encoding"));
   }
   {
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, gzip, br"}};
+    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, test, gzip, br"}};
     setUpFilter("{}");
     EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, true));
     EXPECT_TRUE(headers.has("accept-encoding"));
-    EXPECT_EQ("deflate, gzip, br", headers.get_("accept-encoding"));
+    EXPECT_EQ("deflate, test, gzip, br", headers.get_("accept-encoding"));
   }
+  // TODO: verify removeAcceptEncoding is not used when there is no 'test' in 'Accept-Encoding'
 }
 
 } // namespace Compressors
