@@ -87,7 +87,6 @@ protected:
   }
 
   void verifyCompressedData() {
-    //std::cout << "IIII: " << expected_str_.length() << " data:" << data_.length() << std::endl;
     EXPECT_EQ(expected_str_.length(), stats_.counter("test.test.total_uncompressed_bytes").value());
     EXPECT_EQ(data_.length(), stats_.counter("test.test.total_compressed_bytes").value());
   }

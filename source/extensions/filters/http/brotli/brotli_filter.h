@@ -27,7 +27,7 @@ public:
   Compressor::BrotliCompressorImpl::EncoderMode encoderMode() const { return encoder_mode_; };
 
   std::unique_ptr<Compressor::Compressor> makeCompressor() override;
-  const std::string featureName() const override { return "brotli.feature_enabled"; };
+  const std::string featureName() const override { return "brotli.filter_enabled"; };
 
 private:
   static Compressor::BrotliCompressorImpl::EncoderMode encoderModeEnum(
