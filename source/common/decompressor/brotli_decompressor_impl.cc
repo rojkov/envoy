@@ -57,22 +57,7 @@ void BrotliDecompressorImpl::process(BrotliContext& ctx, Buffer::Instance& outpu
   BrotliDecoderResult result;
   result = BrotliDecoderDecompressStream(state_.get(), &ctx.avail_in, &ctx.next_in, &ctx.avail_out,
                                      &ctx.next_out, nullptr);
-  switch (result) {
-  case BROTLI_DECODER_RESULT_ERROR:
-    ENVOY_LOG(error, "error");
-    break;
-  case BROTLI_DECODER_RESULT_SUCCESS:
-    ENVOY_LOG(error, "success");
-    break;
-  case BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT:
-    ENVOY_LOG(error, "needs more input");
-    break;
-  case BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT:
-    ENVOY_LOG(error, "needs more output");
-    break;
-  default:
-    ENVOY_LOG(error, "unknown");
-  }
+  ASSERT(result != BROTLI_DECODER_RESULT_ERROR);
   if (ctx.avail_out == 0) {
     // update output and reset context
     output_buffer.add(static_cast<void*>(ctx.chunk_ptr.get()), chunk_size_);

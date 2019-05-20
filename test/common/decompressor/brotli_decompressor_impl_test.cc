@@ -148,25 +148,25 @@ TEST_F(BrotliDecompressorImplTest, DecompressWithSmallOutputBuffer) {
 // Exercises decompression with other supported brotli initialization params.
 TEST_F(BrotliDecompressorImplTest, CompressDecompressWithUncommonParams) {
   // Test with different memory levels.
-  for (uint32_t i = 1; i < 10; ++i) {
+  for (uint32_t i = 1; i < 8; ++i) {
     testcompressDecompressWithUncommonParams(
       i-1, // quality
       15, // window_bits
-      15, // input_block_bits
+      16, // input_block_bits
       false, // disable_literal_context_modeling
       Envoy::Compressor::BrotliCompressorImpl::EncoderMode::Font);
 
     testcompressDecompressWithUncommonParams(
       11, // quality
       15, // window_bits
-      i + 10, // input_block_bits
+      i + 15, // input_block_bits
       false, // disable_literal_context_modeling
       Envoy::Compressor::BrotliCompressorImpl::EncoderMode::Text);
 
     testcompressDecompressWithUncommonParams(
       11, // quality
       i + 10, // window_bits
-      15, // input_block_bits
+      16, // input_block_bits
       false, // disable_literal_context_modeling
       Envoy::Compressor::BrotliCompressorImpl::EncoderMode::Generic);
   }
