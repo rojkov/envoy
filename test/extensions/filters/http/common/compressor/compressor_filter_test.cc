@@ -318,6 +318,12 @@ TEST_F(CompressorFilterTest, isAcceptEncodingAllowed) {
     EXPECT_EQ(5, stats_.counter("test.test.header_identity").value());
     EXPECT_EQ(6, stats_.counter("test.test.header_not_valid").value());
   }
+  {
+    Http::TestHeaderMapImpl headers = {{"accept-encoding", ""}};
+    EXPECT_FALSE(isAcceptEncodingAllowed(headers));
+    EXPECT_EQ(5, stats_.counter("test.test.header_identity").value());
+    EXPECT_EQ(7, stats_.counter("test.test.header_not_valid").value());
+  }
 }
 
 // Verifies that compression is skipped when accept-encoding header is not allowed.
