@@ -1,6 +1,6 @@
 #include "envoy/event/timer.h"
 
-#include "common/decompressor/zlib_decompressor_impl.h"
+#include "common/decompressor/brotli_decompressor_impl.h"
 
 #include "test/integration/http_integration.h"
 #include "test/test_common/simulated_time_system.h"
@@ -10,13 +10,13 @@
 
 namespace Envoy {
 
-class GzipIntegrationTest : public testing::TestWithParam<Network::Address::IpVersion>,
+class BrotliIntegrationTest : public testing::TestWithParam<Network::Address::IpVersion>,
                             public Event::SimulatedTimeSystem,
                             public HttpIntegrationTest {
 public:
-  GzipIntegrationTest() : HttpIntegrationTest(Http::CodecClient::Type::HTTP1, GetParam()) {}
+  BrotliIntegrationTest() : HttpIntegrationTest(Http::CodecClient::Type::HTTP1, GetParam()) {}
 
-  void SetUp() override { decompressor_.init(window_bits); }
+  void SetUp() override { decompressor_.init(); }
   void TearDown() override { cleanupUpstreamAndDownstream(); }
 
   void initializeFilter(const std::string& config) {
@@ -37,7 +37,7 @@ public:
     EXPECT_TRUE(response->complete());
     EXPECT_EQ("200", response->headers().Status()->value().getStringView());
     ASSERT_TRUE(response->headers().ContentEncoding() != nullptr);
-    EXPECT_EQ(Http::Headers::get().ContentEncodingValues.Gzip,
+    EXPECT_EQ(Http::Headers::get().ContentEncodingValues.Brotli,
               response->headers().ContentEncoding()->value().getStringView());
     ASSERT_TRUE(response->headers().TransferEncoding() != nullptr);
     EXPECT_EQ(Http::Headers::get().TransferEncodingValues.Chunked,
@@ -66,7 +66,7 @@ public:
   }
 
   const std::string full_config{R"EOF(
-      name: envoy.gzip
+      name: envoy.brotli
       config:
         memory_level: 3
         window_bits: 10
@@ -79,42 +79,42 @@ public:
         disable_on_etag_header: true
     )EOF"};
 
-  const std::string default_config{"name: envoy.gzip"};
+  const std::string default_config{"name: envoy.brotli"};
 
   const uint64_t window_bits{15 | 16};
 
-  Decompressor::ZlibDecompressorImpl decompressor_{};
+  Decompressor::BrotliDecompressorImpl decompressor_{};
 };
 
-INSTANTIATE_TEST_SUITE_P(IpVersions, GzipIntegrationTest,
+INSTANTIATE_TEST_SUITE_P(IpVersions, BrotliIntegrationTest,
                          testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
                          TestUtility::ipTestParamsToString);
 
 /**
- * Exercises gzip compression with default configuration.
+ * Exercises brotli compression with default configuration.
  */
-TEST_P(GzipIntegrationTest, AcceptanceDefaultConfigTest) {
+TEST_P(BrotliIntegrationTest, AcceptanceDefaultConfigTest) {
   initializeFilter(default_config);
   doRequestAndCompression(Http::TestHeaderMapImpl{{":method", "GET"},
                                                   {":path", "/test/long/url"},
                                                   {":scheme", "http"},
                                                   {":authority", "host"},
-                                                  {"accept-encoding", "deflate, gzip"}},
+                                                  {"accept-encoding", "deflate, br"}},
                           Http::TestHeaderMapImpl{{":status", "200"},
                                                   {"content-length", "4400"},
                                                   {"content-type", "text/xml"}});
 }
 
 /**
- * Exercises gzip compression with full configuration.
+ * Exercises brotli compression with full configuration.
  */
-TEST_P(GzipIntegrationTest, AcceptanceFullConfigTest) {
+TEST_P(BrotliIntegrationTest, AcceptanceFullConfigTest) {
   initializeFilter(full_config);
   doRequestAndCompression(Http::TestHeaderMapImpl{{":method", "GET"},
                                                   {":path", "/test/long/url"},
                                                   {":scheme", "http"},
                                                   {":authority", "host"},
-                                                  {"accept-encoding", "deflate, gzip"}},
+                                                  {"accept-encoding", "deflate, br"}},
                           Http::TestHeaderMapImpl{{":status", "200"},
                                                   {"content-length", "4400"},
                                                   {"content-type", "application/json"}});
@@ -123,7 +123,7 @@ TEST_P(GzipIntegrationTest, AcceptanceFullConfigTest) {
 /**
  * Exercises filter when client request contains 'identity' type.
  */
-TEST_P(GzipIntegrationTest, IdentityAcceptEncoding) {
+TEST_P(BrotliIntegrationTest, IdentityAcceptEncoding) {
   initializeFilter(default_config);
   doRequestAndNoCompression(Http::TestHeaderMapImpl{{":method", "GET"},
                                                     {":path", "/test/long/url"},
@@ -138,13 +138,13 @@ TEST_P(GzipIntegrationTest, IdentityAcceptEncoding) {
 /**
  * Exercises filter when client request contains unsupported 'accept-encoding' type.
  */
-TEST_P(GzipIntegrationTest, NotSupportedAcceptEncoding) {
+TEST_P(BrotliIntegrationTest, NotSupportedAcceptEncoding) {
   initializeFilter(default_config);
   doRequestAndNoCompression(Http::TestHeaderMapImpl{{":method", "GET"},
                                                     {":path", "/test/long/url"},
                                                     {":scheme", "http"},
                                                     {":authority", "host"},
-                                                    {"accept-encoding", "deflate, br"}},
+                                                    {"accept-encoding", "deflate, gzip"}},
                             Http::TestHeaderMapImpl{{":status", "200"},
                                                     {"content-length", "128"},
                                                     {"content-type", "text/plain"}});
@@ -153,16 +153,16 @@ TEST_P(GzipIntegrationTest, NotSupportedAcceptEncoding) {
 /**
  * Exercises filter when upstream response is already encoded.
  */
-TEST_P(GzipIntegrationTest, UpstreamResponseAlreadyEncoded) {
+TEST_P(BrotliIntegrationTest, UpstreamResponseAlreadyEncoded) {
   initializeFilter(default_config);
   Http::TestHeaderMapImpl request_headers{{":method", "GET"},
                                           {":path", "/test/long/url"},
                                           {":scheme", "http"},
                                           {":authority", "host"},
-                                          {"accept-encoding", "deflate, gzip"}};
+                                          {"accept-encoding", "deflate, br"}};
 
   Http::TestHeaderMapImpl response_headers{{":status", "200"},
-                                           {"content-encoding", "br"},
+                                           {"content-encoding", "gzip"},
                                            {"content-length", "128"},
                                            {"content-type", "application/json"}};
 
@@ -172,20 +172,20 @@ TEST_P(GzipIntegrationTest, UpstreamResponseAlreadyEncoded) {
   EXPECT_EQ(0U, upstream_request_->bodyLength());
   EXPECT_TRUE(response->complete());
   EXPECT_EQ("200", response->headers().Status()->value().getStringView());
-  ASSERT_EQ("br", response->headers().ContentEncoding()->value().getStringView());
+  ASSERT_EQ("gzip", response->headers().ContentEncoding()->value().getStringView());
   EXPECT_EQ(128U, response->body().size());
 }
 
 /**
  * Exercises filter when upstream responds with content length below the default threshold.
  */
-TEST_P(GzipIntegrationTest, NotEnoughContentLength) {
+TEST_P(BrotliIntegrationTest, NotEnoughContentLength) {
   initializeFilter(default_config);
   Http::TestHeaderMapImpl request_headers{{":method", "GET"},
                                           {":path", "/test/long/url"},
                                           {":scheme", "http"},
                                           {":authority", "host"},
-                                          {"accept-encoding", "deflate, gzip"}};
+                                          {"accept-encoding", "deflate, br"}};
 
   Http::TestHeaderMapImpl response_headers{
       {":status", "200"}, {"content-length", "10"}, {"content-type", "application/json"}};
@@ -203,13 +203,13 @@ TEST_P(GzipIntegrationTest, NotEnoughContentLength) {
 /**
  * Exercises filter when response from upstream service is empty.
  */
-TEST_P(GzipIntegrationTest, EmptyResponse) {
+TEST_P(BrotliIntegrationTest, EmptyResponse) {
   initializeFilter(default_config);
   Http::TestHeaderMapImpl request_headers{{":method", "GET"},
                                           {":path", "/test/long/url"},
                                           {":scheme", "http"},
                                           {":authority", "host"},
-                                          {"accept-encoding", "deflate, gzip"}};
+                                          {"accept-encoding", "deflate, br"}};
 
   Http::TestHeaderMapImpl response_headers{{":status", "204"}, {"content-length", "0"}};
 
@@ -226,13 +226,13 @@ TEST_P(GzipIntegrationTest, EmptyResponse) {
 /**
  * Exercises filter when upstream responds with restricted content-type value.
  */
-TEST_P(GzipIntegrationTest, SkipOnContentType) {
+TEST_P(BrotliIntegrationTest, SkipOnContentType) {
   initializeFilter(full_config);
   doRequestAndNoCompression(Http::TestHeaderMapImpl{{":method", "GET"},
                                                     {":path", "/test/long/url"},
                                                     {":scheme", "http"},
                                                     {":authority", "host"},
-                                                    {"accept-encoding", "deflate, gzip"}},
+                                                    {"accept-encoding", "deflate, br"}},
                             Http::TestHeaderMapImpl{{":status", "200"},
                                                     {"content-length", "128"},
                                                     {"content-type", "application/xml"}});
@@ -241,13 +241,13 @@ TEST_P(GzipIntegrationTest, SkipOnContentType) {
 /**
  * Exercises filter when upstream responds with restricted cache-control value.
  */
-TEST_P(GzipIntegrationTest, SkipOnCacheControl) {
+TEST_P(BrotliIntegrationTest, SkipOnCacheControl) {
   initializeFilter(full_config);
   doRequestAndNoCompression(Http::TestHeaderMapImpl{{":method", "GET"},
                                                     {":path", "/test/long/url"},
                                                     {":scheme", "http"},
                                                     {":authority", "host"},
-                                                    {"accept-encoding", "deflate, gzip"}},
+                                                    {"accept-encoding", "deflate, br"}},
                             Http::TestHeaderMapImpl{{":status", "200"},
                                                     {"content-length", "128"},
                                                     {"cache-control", "no-transform"},
@@ -255,15 +255,15 @@ TEST_P(GzipIntegrationTest, SkipOnCacheControl) {
 }
 
 /**
- * Exercises gzip compression when upstream returns a chunked response.
+ * Exercises brotli compression when upstream returns a chunked response.
  */
-TEST_P(GzipIntegrationTest, AcceptanceFullConfigChunkedResponse) {
+TEST_P(BrotliIntegrationTest, AcceptanceFullConfigChunkedResponse) {
   initializeFilter(full_config);
   Http::TestHeaderMapImpl request_headers{{":method", "GET"},
                                           {":path", "/test/long/url"},
                                           {":scheme", "http"},
                                           {":authority", "host"},
-                                          {"accept-encoding", "deflate, gzip"}};
+                                          {"accept-encoding", "deflate, br"}};
 
   Http::TestHeaderMapImpl response_headers{{":status", "200"},
                                            {"content-type", "application/json"}};
@@ -274,20 +274,20 @@ TEST_P(GzipIntegrationTest, AcceptanceFullConfigChunkedResponse) {
   EXPECT_EQ(0U, upstream_request_->bodyLength());
   EXPECT_TRUE(response->complete());
   EXPECT_EQ("200", response->headers().Status()->value().getStringView());
-  ASSERT_EQ("gzip", response->headers().ContentEncoding()->value().getStringView());
+  ASSERT_EQ("br", response->headers().ContentEncoding()->value().getStringView());
   ASSERT_EQ("chunked", response->headers().TransferEncoding()->value().getStringView());
 }
 
 /**
  * Verify Vary header values are preserved.
  */
-TEST_P(GzipIntegrationTest, AcceptanceFullConfigVeryHeader) {
+TEST_P(BrotliIntegrationTest, AcceptanceFullConfigVeryHeader) {
   initializeFilter(default_config);
   Http::TestHeaderMapImpl request_headers{{":method", "GET"},
                                           {":path", "/test/long/url"},
                                           {":scheme", "http"},
                                           {":authority", "host"},
-                                          {"accept-encoding", "deflate, gzip"}};
+                                          {"accept-encoding", "deflate, br"}};
 
   Http::TestHeaderMapImpl response_headers{
       {":status", "200"}, {"content-type", "application/json"}, {"vary", "Cookie"}};
@@ -298,7 +298,7 @@ TEST_P(GzipIntegrationTest, AcceptanceFullConfigVeryHeader) {
   EXPECT_EQ(0U, upstream_request_->bodyLength());
   EXPECT_TRUE(response->complete());
   EXPECT_EQ("200", response->headers().Status()->value().getStringView());
-  ASSERT_EQ("gzip", response->headers().ContentEncoding()->value().getStringView());
+  ASSERT_EQ("br", response->headers().ContentEncoding()->value().getStringView());
   ASSERT_EQ("Cookie, Accept-Encoding", response->headers().Vary()->value().getStringView());
 }
 } // namespace Envoy
