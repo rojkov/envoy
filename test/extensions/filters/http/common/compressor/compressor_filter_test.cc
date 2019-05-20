@@ -326,9 +326,9 @@ TEST_F(CompressorFilterTest, isAcceptEncodingAllowed) {
     EXPECT_EQ(7, stats_.counter("test.test.header_not_valid").value());
   }
   {
+    // Compressor "test2" should overshadow "test"
     Stats::IsolatedStoreImpl stats;
     NiceMock<Runtime::MockLoader> runtime;
-    Json::ObjectSharedPtr config = Json::Factory::loadFromString("{}");
     test::extensions::filters::http::common::compressor::Mock mock;
     MessageUtil::loadFromJson("{}", mock);
     CompressorFilterConfigSharedPtr config2;
@@ -338,7 +338,6 @@ TEST_F(CompressorFilterTest, isAcceptEncodingAllowed) {
     EXPECT_FALSE(isAcceptEncodingAllowed(headers));
     EXPECT_EQ(1, stats_.counter("test.test.header_compressor_overshadowed").value());
     EXPECT_EQ(6, stats_.counter("test.test.header_compressor_used").value());
-    //EXPECT_EQ(1, stats.counter("test.test2.header_compressor_used").value());
   }
 }
 
