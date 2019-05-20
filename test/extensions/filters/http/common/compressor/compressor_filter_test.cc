@@ -80,7 +80,6 @@ protected:
 
   // CompressorFilterTest Helpers
   void setUpFilter(std::string&& json) {
-    Json::ObjectSharedPtr config = Json::Factory::loadFromString(json);
     test::extensions::filters::http::common::compressor::Mock mock;
     MessageUtil::loadFromJson(json, mock);
     config_.reset(new MockCompressorFilterConfig(mock, "test.", stats_, runtime_, "test"));
@@ -334,6 +333,7 @@ TEST_F(CompressorFilterTest, isAcceptEncodingAllowed) {
     CompressorFilterConfigSharedPtr config2;
     config2.reset(new MockCompressorFilterConfig(mock, "test2.", stats, runtime, "test2"));
     std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
+
     Http::TestHeaderMapImpl headers = {{"accept-encoding", "test;Q=.5,test2;q=0.75"}};
     EXPECT_FALSE(isAcceptEncodingAllowed(headers));
     EXPECT_EQ(1, stats_.counter("test.test.header_compressor_overshadowed").value());
