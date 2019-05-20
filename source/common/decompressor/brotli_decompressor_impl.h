@@ -2,6 +2,8 @@
 
 #include "envoy/decompressor/decompressor.h"
 
+#include "common/common/logger.h"
+
 #include "brotli/decode.h"
 
 namespace Envoy {
@@ -24,7 +26,7 @@ struct BrotliContext {
 /**
  * Implementation of decompressor's interface.
  */
-class BrotliDecompressorImpl : public Decompressor {
+class BrotliDecompressorImpl : public Decompressor, protected Logger::Loggable<Logger::Id::connection> {
 public:
   BrotliDecompressorImpl();
 

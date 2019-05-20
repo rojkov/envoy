@@ -41,11 +41,38 @@ void BrotliDecompressorImpl::decompress(const Buffer::Instance& input_buffer,
       process(ctx, output_buffer);
     }
   }
+
+  do {
+    process(ctx, output_buffer);
+  } while (BrotliDecoderHasMoreOutput(state_.get()) && !BrotliDecoderIsFinished(state_.get()));
+
+  const size_t n_output = chunk_size_ - ctx.avail_out;
+  if (n_output > 0) {
+    output_buffer.add(static_cast<void*>(ctx.chunk_ptr.get()), n_output);
+  }
+  ENVOY_LOG(debug, "length: {}, out: {}", output_buffer.length(), "redacted");
 }
 
 void BrotliDecompressorImpl::process(BrotliContext& ctx, Buffer::Instance& output_buffer) {
-  ASSERT(BrotliDecoderDecompressStream(state_.get(), &ctx.avail_in, &ctx.next_in, &ctx.avail_out,
-                                     &ctx.next_out, nullptr) == BROTLI_TRUE);
+  BrotliDecoderResult result;
+  result = BrotliDecoderDecompressStream(state_.get(), &ctx.avail_in, &ctx.next_in, &ctx.avail_out,
+                                     &ctx.next_out, nullptr);
+  switch (result) {
+  case BROTLI_DECODER_RESULT_ERROR:
+    ENVOY_LOG(error, "error");
+    break;
+  case BROTLI_DECODER_RESULT_SUCCESS:
+    ENVOY_LOG(error, "success");
+    break;
+  case BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT:
+    ENVOY_LOG(error, "needs more input");
+    break;
+  case BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT:
+    ENVOY_LOG(error, "needs more output");
+    break;
+  default:
+    ENVOY_LOG(error, "unknown");
+  }
   if (ctx.avail_out == 0) {
     // update output and reset context
     output_buffer.add(static_cast<void*>(ctx.chunk_ptr.get()), chunk_size_);

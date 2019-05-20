@@ -60,10 +60,6 @@ protected:
 
 class BrotliDecompressorImplDeathTest : public BrotliDecompressorImplTest {
 protected:
-  static void decompressorBadInitTestHelper() {
-    BrotliDecompressorImpl decompressor;
-    decompressor.init();
-  }
 
   static void unitializedDecompressorTestHelper() {
     Buffer::OwnedImpl input_buffer;
@@ -73,12 +69,6 @@ protected:
     decompressor.decompress(input_buffer, output_buffer);
   }
 };
-
-// Exercises death by passing bad initialization params or by calling decompress before init.
-TEST_F(BrotliDecompressorImplDeathTest, DecompressorDeathTest) {
-  EXPECT_DEATH_LOG_TO_STDERR(decompressorBadInitTestHelper(), "assert failure: result >= 0");
-  EXPECT_DEATH_LOG_TO_STDERR(unitializedDecompressorTestHelper(), "assert failure: result == Z_OK");
-}
 
 // Exercises compression and decompression by compressing some data, decompressing it and then
 // comparing compressor's input/checksum with decompressor's output/checksum.
