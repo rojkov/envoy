@@ -26,12 +26,13 @@ class MockCompressorFilterConfig : public CompressorFilterConfig {
 public:
   MockCompressorFilterConfig(const test::extensions::filters::http::common::compressor::Mock& mock,
                              const std::string& stats_prefix, Stats::Scope& scope,
-                             Runtime::Loader& runtime)
+                             Runtime::Loader& runtime,
+                             std::string compressor_name)
     : CompressorFilterConfig(mock.content_length().value(),
                              mock.content_type(),
                              mock.disable_on_etag_header(),
                              mock.remove_accept_encoding_header(),
-                             stats_prefix + "test.", scope, runtime, "test") {}
+                             stats_prefix + compressor_name + ".", scope, runtime, compressor_name) {}
 
   // MOCK_METHOD0(makeCompressor, std::unique_ptr<Compressor::Compressor>());
   //MOCK_CONST_METHOD0(featureName, const std::string());
@@ -82,7 +83,7 @@ protected:
     Json::ObjectSharedPtr config = Json::Factory::loadFromString(json);
     test::extensions::filters::http::common::compressor::Mock mock;
     MessageUtil::loadFromJson(json, mock);
-    config_.reset(new MockCompressorFilterConfig(mock, "test.", stats_, runtime_));
+    config_.reset(new MockCompressorFilterConfig(mock, "test.", stats_, runtime_, "test"));
     filter_ = std::make_unique<CompressorFilter>(config_);
   }
 
@@ -323,6 +324,21 @@ TEST_F(CompressorFilterTest, isAcceptEncodingAllowed) {
     EXPECT_FALSE(isAcceptEncodingAllowed(headers));
     EXPECT_EQ(5, stats_.counter("test.test.header_identity").value());
     EXPECT_EQ(7, stats_.counter("test.test.header_not_valid").value());
+  }
+  {
+    Stats::IsolatedStoreImpl stats;
+    NiceMock<Runtime::MockLoader> runtime;
+    Json::ObjectSharedPtr config = Json::Factory::loadFromString("{}");
+    test::extensions::filters::http::common::compressor::Mock mock;
+    MessageUtil::loadFromJson("{}", mock);
+    CompressorFilterConfigSharedPtr config2;
+    config2.reset(new MockCompressorFilterConfig(mock, "test2.", stats, runtime, "test2"));
+    std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
+    Http::TestHeaderMapImpl headers = {{"accept-encoding", "test;Q=.5,test2;q=0.75"}};
+    EXPECT_FALSE(isAcceptEncodingAllowed(headers));
+    EXPECT_EQ(1, stats_.counter("test.test.header_compressor_overshadowed").value());
+    EXPECT_EQ(6, stats_.counter("test.test.header_compressor_used").value());
+    //EXPECT_EQ(1, stats.counter("test.test2.header_compressor_used").value());
   }
 }
 
