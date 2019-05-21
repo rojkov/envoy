@@ -16,8 +16,7 @@ envoy_cc_library(
     srcs = ["gzip_filter.cc"],
     hdrs = ["gzip_filter.h"],
     deps = [
-        "//source/common/compressor:compressor_lib",
-        "//source/common/protobuf",
+        "//source/common/compressor:zlib_compressor_lib",
         "//source/extensions/filters/http/common/compressor:compressor_lib",
         "@envoy_api//envoy/config/filter/http/gzip/v2:gzip_cc",
     ],

@@ -9,7 +9,7 @@ load(
 envoy_package()
 
 envoy_cc_library(
-    name = "compressor_lib",
+    name = "zlib_compressor_lib",
     srcs = ["zlib_compressor_impl.cc"],
     hdrs = ["zlib_compressor_impl.h"],
     external_deps = ["zlib"],
