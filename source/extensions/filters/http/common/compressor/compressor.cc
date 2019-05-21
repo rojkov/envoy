@@ -93,10 +93,10 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
       if (params != token) {
         const auto q_value = StringUtil::cropLeft(params, "=");
         if (q_value != params && StringUtil::caseCompare("q", StringUtil::trim(StringUtil::cropRight(params, "=")))) {
-          errno = 0;
-          pair.second = strtof(std::string(q_value).c_str(), nullptr);
-          if (errno && errno != ERANGE) {
-              ENVOY_LOG(warn, "Failed to convert {} to float", q_value);
+          auto result = absl::SimpleAtof(StringUtil::trim(q_value), &pair.second);
+          if (!result) {
+              ENVOY_LOG(warn, "Unable to parse {}", q_value);
+              continue;
           }
         }
       }

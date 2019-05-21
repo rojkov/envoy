@@ -64,8 +64,9 @@ void BrotliCompressorImpl::compress(Buffer::Instance& buffer, State state) {
 
 void BrotliCompressorImpl::process(BrotliContext& ctx, Buffer::Instance& output_buffer,
                                    const BrotliEncoderOperation op) {
-  ASSERT(BrotliEncoderCompressStream(state_.get(), op, &ctx.avail_in, &ctx.next_in, &ctx.avail_out,
-                                     &ctx.next_out, nullptr) == BROTLI_TRUE);
+  auto result = BrotliEncoderCompressStream(state_.get(), op, &ctx.avail_in, &ctx.next_in, &ctx.avail_out,
+                                     &ctx.next_out, nullptr);
+  ASSERT(result == BROTLI_TRUE);
   if (ctx.avail_out == 0) {
     // update output and reset context
     output_buffer.add(static_cast<void*>(ctx.chunk_ptr.get()), chunk_size_);
