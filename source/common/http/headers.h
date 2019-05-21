@@ -282,12 +282,14 @@ public:
 
   struct {
     const std::string Gzip{"gzip"};
+    const std::string Brotli{"br"};
     const std::string Identity{"identity"};
     const std::string Wildcard{"*"};
   } AcceptEncodingValues;
 
   struct {
     const std::string Gzip{"gzip"};
+    const std::string Brotli{"br"};
   } ContentEncodingValues;
 
   struct {

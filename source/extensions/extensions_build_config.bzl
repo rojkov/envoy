@@ -35,6 +35,7 @@ EXTENSIONS = {
 
     "envoy.filters.http.adaptive_concurrency":          "//source/extensions/filters/http/adaptive_concurrency:config",
     "envoy.filters.http.aws_request_signing":           "//source/extensions/filters/http/aws_request_signing:config",
+    "envoy.filters.http.brotli":                        "//source/extensions/filters/http/brotli:config",
     "envoy.filters.http.buffer":                        "//source/extensions/filters/http/buffer:config",
     "envoy.filters.http.cache":                         "//source/extensions/filters/http/cache:config",
     "envoy.filters.http.cors":                          "//source/extensions/filters/http/cors:config",
@@ -192,6 +193,7 @@ WINDOWS_EXTENSIONS = {
     # HTTP filters
     #
 
+    #"envoy.filters.http.brotli":                        "//source/extensions/filters/http/brotli:config",
     #"envoy.filters.http.buffer":                        "//source/extensions/filters/http/buffer:config",
     #"envoy.filters.http.cors":                          "//source/extensions/filters/http/cors:config",
     #"envoy.filters.http.csrf":                          "//source/extensions/filters/http/csrf:config",

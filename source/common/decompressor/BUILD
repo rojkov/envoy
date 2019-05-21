@@ -20,3 +20,18 @@ envoy_cc_library(
         "//source/common/common:minimal_logger_lib",
     ],
 )
+
+envoy_cc_library(
+    name = "brotli_decompressor_lib",
+    srcs = ["brotli_decompressor_impl.cc"],
+    hdrs = ["brotli_decompressor_impl.h"],
+    external_deps = [
+        "brotlienc",
+        "brotlidec",
+    ],
+    deps = [
+        "//include/envoy/decompressor:decompressor_interface",
+        "//source/common/buffer:buffer_lib",
+        "//source/common/common:assert_lib",
+    ],
+)

@@ -49,6 +49,7 @@ proto_library(
         "//envoy/config/filter/http/grpc_stats/v2alpha:pkg",
         "//envoy/config/filter/http/grpc_web/v2:pkg",
         "//envoy/config/filter/http/gzip/v2:pkg",
+        "//envoy/config/filter/http/brotli/v2:pkg",
         "//envoy/config/filter/http/header_to_metadata/v2:pkg",
         "//envoy/config/filter/http/health_check/v2:pkg",
         "//envoy/config/filter/http/ip_tagging/v2:pkg",
