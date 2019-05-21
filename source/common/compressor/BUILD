@@ -20,3 +20,14 @@ envoy_cc_library(
         "//source/common/common:stack_array",
     ],
 )
+
+envoy_cc_library(
+    name = "brotli_compressor_lib",
+    srcs = ["brotli_compressor_impl.cc"],
+    hdrs = ["brotli_compressor_impl.h"],
+    external_deps = ["brotlienc"],
+    deps = [
+        "//include/envoy/compressor:compressor_interface",
+        "//source/common/common:stack_array",
+    ],
+)
