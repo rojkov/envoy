@@ -14,7 +14,7 @@ envoy_cc_test(
     deps = [
         "//source/common/common:assert_lib",
         "//source/common/common:hex_lib",
-        "//source/common/compressor:compressor_lib",
+        "//source/common/compressor:zlib_compressor_lib",
         "//test/test_common:utility_lib",
     ],
 )
