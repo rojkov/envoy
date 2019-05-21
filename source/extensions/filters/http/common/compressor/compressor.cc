@@ -350,6 +350,8 @@ bool CompressorFilter::isTransferEncodingAllowed(Http::HeaderMap& headers) const
           StringUtil::caseCompare(trimmed_value,
                                   Http::Headers::get().TransferEncodingValues.Gzip) ||
           StringUtil::caseCompare(trimmed_value,
+                                  Http::Headers::get().TransferEncodingValues.Brotli) ||
+          StringUtil::caseCompare(trimmed_value,
                                   Http::Headers::get().TransferEncodingValues.Deflate)) {
         return false;
       }
