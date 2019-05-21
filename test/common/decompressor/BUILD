@@ -19,3 +19,14 @@ envoy_cc_test(
         "//test/test_common:utility_lib",
     ],
 )
+
+envoy_cc_test(
+    name = "brotli_decompressor_test",
+    srcs = ["brotli_decompressor_impl_test.cc"],
+    deps = [
+        "//source/common/common:assert_lib",
+        "//source/common/compressor:brotli_compressor_lib",
+        "//source/common/decompressor:brotli_decompressor_lib",
+        "//test/test_common:utility_lib",
+    ],
+)
