@@ -68,20 +68,20 @@ public:
   const std::string full_config{R"EOF(
       name: envoy.brotli
       config:
-        memory_level: 3
+        quality: 2
+        encoder_mode: generic
         window_bits: 10
-        compression_level: best
-        compression_strategy: rle
         content_length: 100
         content_type:
           - text/html
           - application/json
         disable_on_etag_header: true
+        remove_accept_encoding_header: true
+        input_block_bits: 16
+        disable_literal_context_modeling: true
     )EOF"};
 
   const std::string default_config{"name: envoy.brotli"};
-
-  const uint64_t window_bits{15 | 16};
 
   Decompressor::BrotliDecompressorImpl decompressor_{};
 };
