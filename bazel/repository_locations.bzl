@@ -146,6 +146,11 @@ REPOSITORY_LOCATIONS = dict(
         strip_prefix = "zlib-1.2.11",
         urls = ["https://github.com/madler/zlib/archive/v1.2.11.tar.gz"],
     ),
+    org_brotli = dict(
+        sha256 = "4c61bfb0faca87219ea587326c467b95acb25555b53d1a421ffa3c8a9296ee2c",
+        strip_prefix = "brotli-1.0.7",
+        urls = ["https://github.com/google/brotli/archive/v1.0.7.tar.gz"],
+    ),
     com_github_jbeder_yaml_cpp = dict(
         sha256 = "53dcffd55f3433b379fcc694f45c54898711c0e29159a7bd02e82a3e0253bac3",
         strip_prefix = "yaml-cpp-0f9a586ca1dc29c2ecb8dd715a315b93e3f40f79",

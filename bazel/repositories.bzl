@@ -163,6 +163,7 @@ def envoy_dependencies(skip_targets = []):
     _com_lightstep_tracer_cpp()
     _io_opentracing_cpp()
     _net_zlib()
+    _org_brotli()
 
     # Used for bundling gcovr into a relocatable .par file.
     _repository_impl("subpar")
@@ -326,6 +327,21 @@ def _net_zlib():
     native.bind(
         name = "zlib",
         actual = "@envoy//bazel/foreign_cc:zlib",
+    )
+
+def _org_brotli():
+    location = REPOSITORY_LOCATIONS["org_brotli"]
+    http_archive(
+        name = "org_brotli",
+        **location
+    )
+    native.bind(
+        name = "brotlienc",
+        actual = "@org_brotli//:brotlienc",
+    )
+    native.bind(
+        name = "brotlidec",
+        actual = "@org_brotli//:brotlidec",
     )
 
 def _com_github_nghttp2_nghttp2():
