@@ -16,8 +16,8 @@ envoy_cc_fuzz_test(
     deps = [
         "//source/common/buffer:buffer_lib",
         "//source/common/common:assert_lib",
-        "//source/common/compressor:compressor_lib",
-        "//source/common/decompressor:decompressor_lib",
+        "//source/common/compressor:zlib_compressor_lib",
+        "//source/common/decompressor:zlib_decompressor_lib",
     ],
 )
 
@@ -27,7 +27,7 @@ envoy_cc_test(
     deps = [
         "//source/common/common:assert_lib",
         "//source/common/common:hex_lib",
-        "//source/common/compressor:compressor_lib",
+        "//source/common/compressor:zlib_compressor_lib",
         "//test/test_common:utility_lib",
     ],
 )
