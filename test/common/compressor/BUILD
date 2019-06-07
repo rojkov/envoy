@@ -24,9 +24,18 @@ envoy_cc_test(
     srcs = ["brotli_compressor_impl_test.cc"],
     deps = [
         "//source/common/common:assert_lib",
-        "//source/common/common:hex_lib",
         "//source/common/compressor:brotli_compressor_lib",
         "//source/common/decompressor:brotli_decompressor_lib",
+        "//test/test_common:utility_lib",
+    ],
+)
+
+envoy_cc_test(
+    name = "qatzip_compressor_test",
+    srcs = ["qatzip_compressor_impl_test.cc"],
+    deps = [
+        "//source/common/common:assert_lib",
+        "//source/common/compressor:qatzip_compressor_lib",
         "//test/test_common:utility_lib",
     ],
 )

@@ -31,3 +31,14 @@ envoy_cc_library(
         "//source/common/common:stack_array",
     ],
 )
+
+envoy_cc_library(
+    name = "qatzip_compressor_lib",
+    srcs = ["qatzip_compressor_impl.cc"],
+    hdrs = ["qatzip_compressor_impl.h"],
+    external_deps = ["qatzip"],
+    deps = [
+        "//include/envoy/compressor:compressor_interface",
+        "//source/common/common:stack_array",
+    ],
+)

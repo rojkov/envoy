@@ -161,9 +161,11 @@ def envoy_dependencies(skip_targets = []):
     _com_github_envoyproxy_sqlparser()
     _com_googlesource_quiche()
     _com_lightstep_tracer_cpp()
+    _com_intel_qat()
     _io_opentracing_cpp()
     _net_zlib()
     _org_brotli()
+    _com_github_intel_qatzip()
 
     # Used for bundling gcovr into a relocatable .par file.
     _repository_impl("subpar")
@@ -415,6 +417,41 @@ def _com_google_googletest():
     native.bind(
         name = "googletest",
         actual = "@com_google_googletest//:gtest",
+    )
+
+def _com_intel_qat():
+    _repository_impl(
+        name = "com_intel_qat",
+        build_file = "@envoy//bazel/external:qat.BUILD",
+        patches = [
+            "@envoy//bazel/external:0001-Add-extern-C-to-several-headers.patch",
+            "@envoy//bazel/external:0002-cpa_types-do-not-define-TRUE-and-FALSE.patch",
+            "@envoy//bazel/external:0003-Fix-openssl-header-include-paths.patch",
+            "@envoy//bazel/external:0004-Udev-mock-implementation.patch",
+        ],
+        patch_args = ["-p1"],
+    )
+    native.bind(
+        name = "qat",
+        actual = "@com_intel_qat//:qat",
+    )
+
+def _com_github_intel_qatzip():
+    _repository_impl(
+        name = "com_github_intel_qatzip",
+        build_file = "@envoy//bazel/external:qatzip.BUILD",
+        patches = [
+            "@envoy//bazel/external:0001-QATAPP-12270-Fix-the-QATzip-Decompress-stream-API-is.patch",
+            "@envoy//bazel/external:0002-qatzip_stream-have-unambiguous-QZ_ERROR-prints.patch",
+            "@envoy//bazel/external:0003-qatzip-fix-resource-counting.patch",
+            "@envoy//bazel/external:0004-qatzip_stream-qzMalloc-PINNED_MEM-only-when-HW-is-av.patch",
+            "@envoy//bazel/external:0005-qatzip_stream-fix-buffer-offset.patch",
+        ],
+        patch_args = ["-p1"],
+    )
+    native.bind(
+        name = "qatzip",
+        actual = "@com_github_intel_qatzip//:qatzip",
     )
 
 # TODO(jmarantz): replace the use of bind and external_deps with just

@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package envoy.config.filter.http.qatzip.v2;
+
+option java_outer_classname = "QatzipProto";
+option java_multiple_files = true;
+option java_package = "io.envoyproxy.envoy.config.filter.http.qatzip.v2";
+option go_package = "v2";
+
+import "google/protobuf/wrappers.proto";
+
+import "validate/validate.proto";
+import "gogoproto/gogo.proto";
+
+// [#protodoc-title: QATzip]
+// QATzip :ref:`configuration overview <config_http_filters_qatzip>`.
+
+message Qatzip {
+  // Value from 1 to 12 that controls the main compression speed-density lever.
+  // The higher quality, the slower compression. The default value is 12.
+  google.protobuf.UInt32Value compression_level = 1 [(validate.rules).uint32 = {gte: 1, lte: 9}];
+
+  // Minimum response length, in bytes, which will trigger compression. The default value is 30.
+  google.protobuf.UInt32Value content_length = 2 [(validate.rules).uint32.gte = 30];
+
+  // Set of strings that allows specifying which mime-types yield compression; e.g.,
+  // application/json, text/html, etc. When this field is not defined, compression will be applied
+  // to the following mime-types: "application/javascript", "application/json",
+  // "application/xhtml+xml", "image/svg+xml", "text/css", "text/html", "text/plain", "text/xml".
+  repeated string content_type = 4 [(validate.rules).repeated = {max_items: 50}];
+
+  // If true, disables compression when the response contains an etag header. When it is false, the
+  // filter will preserve weak etags and remove the ones that require strong validation.
+  bool disable_on_etag_header = 5;
+
+  enum HardwareBufferSize {
+    DEFAULT = 0;
+    SZ_4K = 1;
+    SZ_8K = 2;
+    SZ_32K = 3;
+    SZ_64K = 4;
+    SZ_128K = 5;
+    SZ_512K = 6;
+  }
+
+  // A size of QAT hardware buffer. This field will be set to "DEFAULT" if not specified.
+  HardwareBufferSize hardware_buffer_size = 6 [(validate.rules).enum.defined_only = true];
+
+  // Threshold of compression service’s input size for software failover.
+  // If the size of input request less than the threshold, QATZip will route the request to software
+  // compressor. The default value is 1024. The maximum value is 512*1024.
+  google.protobuf.UInt32Value input_size_threshold = 7
+      [(validate.rules).uint32 = {gte: 128, lte: 524288}];
+
+  // A size of stream buffer. The default value is 128 * 1024. The maximum value is 2*1024*1024 -
+  // 5*1024
+  google.protobuf.UInt32Value stream_buffer_size = 8
+      [(validate.rules).uint32 = {gte: 1024, lte: 2092032}];
+
+  // If true, removes accept-encoding from the request headers before dispatching it to the upstream
+  // so that responses do not get compressed before reaching the filter.
+  bool remove_accept_encoding_header = 9;
+}

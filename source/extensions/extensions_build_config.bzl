@@ -53,6 +53,7 @@ EXTENSIONS = {
     "envoy.filters.http.router":                        "//source/extensions/filters/http/router:config",
     "envoy.filters.http.squash":                        "//source/extensions/filters/http/squash:config",
     "envoy.filters.http.tap":                           "//source/extensions/filters/http/tap:config",
+    "envoy.filters.http.qatzip":                        "//source/extensions/filters/http/qatzip:config",
 
     #
     # Listener filters

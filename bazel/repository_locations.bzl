@@ -138,6 +138,11 @@ REPOSITORY_LOCATIONS = dict(
         # 2019-07-02
         urls = ["https://github.com/libevent/libevent/archive/0d7d85c2083f7a4c9efe01c061486f332b576d28.tar.gz"],
     ),
+    com_github_intel_qatzip = dict(
+        sha256 = "7ccfd9b9a713032faf1c401f6ff097f140ba65236971dd2aa29716fabb03d4e0",
+        strip_prefix = "QATzip-0.2.7",
+        urls = ["https://github.com/intel/QATzip/archive/v0.2.7.tar.gz"],
+    ),
     net_zlib = dict(
         # TODO(moderation): revert to com_github_madler_zlib name pending resolution of workaround
         # in rules_go https://github.com/bazelbuild/rules_go/blob/master/go/private/repositories.bzl#L87-L101
@@ -255,5 +260,9 @@ REPOSITORY_LOCATIONS = dict(
         # Static snapshot of https://quiche.googlesource.com/quiche/+archive/2a930469533c3b541443488a629fe25cd8ff53d0.tar.gz
         sha256 = "fcdebf54c89d839ffa7eefae166c8e4b551c765559db13ff15bff98047f344fb",
         urls = ["https://storage.googleapis.com/quiche-envoy-integration/2a930469533c3b541443488a629fe25cd8ff53d0.tar.gz"],
+    ),
+    com_intel_qat = dict(
+        sha256 = "c42a3afc1a5c76d441eaca8b97dc1f9ee64939ec001539ee1a2f3b39b7543c8e",
+        urls = ["https://01.org/sites/default/files/downloads//qat1.7.l.4.5.0-00034.tar.gz"],
     ),
 )

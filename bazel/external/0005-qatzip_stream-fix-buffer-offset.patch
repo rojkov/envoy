@@ -1,0 +1,26 @@
+From 196da268300b13ab795c9d300db7f8095a6d907e Mon Sep 17 00:00:00 2001
+From: Dmitry Rozhkov <dmitry.rozhkov@linux.intel.com>
+Date: Thu, 6 Jun 2019 14:44:32 +0300
+Subject: [PATCH 5/6] qatzip_stream: fix buffer offset
+
+Signed-off-by: Dmitry Rozhkov <dmitry.rozhkov@linux.intel.com>
+---
+ src/qatzip_stream.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/qatzip_stream.c b/src/qatzip_stream.c
+index d83b0c4..40d8a99 100644
+--- a/src/qatzip_stream.c
++++ b/src/qatzip_stream.c
+@@ -202,7 +202,7 @@ int qzCompressStream(QzSession_T *sess, QzStream_T *strm, unsigned int last)
+     }
+ 
+     while (0 == strm->pending_out) {
+-        copied_input += copyStreamInput(strm, strm->in + consumed);
++        copied_input += copyStreamInput(strm, strm->in + copied_input);
+ 
+         if (strm->pending_in < stream_buf->buf_len &&
+             last != 1) {
+-- 
+2.20.1
+
