@@ -164,6 +164,7 @@ def envoy_dependencies(skip_targets = []):
     _io_opentracing_cpp()
     _net_zlib()
     _org_brotli()
+    _com_github_intel_qatzip()
 
     # Used for bundling gcovr into a relocatable .par file.
     _repository_impl("subpar")
@@ -415,6 +416,18 @@ def _com_google_googletest():
     native.bind(
         name = "googletest",
         actual = "@com_google_googletest//:gtest",
+    )
+
+def _com_github_intel_qatzip():
+    native.new_local_repository(
+        name = "com_github_intel_qatzip",
+        path = "/usr/local/lib64",
+        build_file = "@envoy//bazel/external:qatzip.BUILD"
+    )
+
+    native.bind(
+        name = "qatzip",
+        actual = "@com_github_intel_qatzip//:qatzip",
     )
 
 # TODO(jmarantz): replace the use of bind and external_deps with just
