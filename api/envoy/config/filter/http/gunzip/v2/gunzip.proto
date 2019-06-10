@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package envoy.config.filter.http.gunzip.v2;
+
+option java_outer_classname = "GunzipProto";
+option java_multiple_files = true;
+option java_package = "io.envoyproxy.envoy.config.filter.http.gunzip.v2";
+option go_package = "v2";
+
+import "google/protobuf/wrappers.proto";
+
+import "validate/validate.proto";
+import "gogoproto/gogo.proto";
+
+// [#protodoc-title: Gunzip]
+// Gunzip :ref:`configuration overview <config_http_filters_gunzip>`.
+
+message Gunzip {
+
+  // Value from 9 to 15 that represents the base two logarithmic of the decompressor's window size.
+  // window_bits must be greater than or equal to the windowBits value provided to deflateInit2()
+  // while compressing. If omitted then the window size in the zlib header of the compressed stream
+  // will be used.
+  // For more details about this parameter, please refer to zlib manual > inflateInit2.
+  google.protobuf.UInt32Value window_bits = 1 [(validate.rules).uint32 = {gte: 9, lte: 15}];
+}
