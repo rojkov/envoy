@@ -28,6 +28,7 @@ Http::FilterHeadersStatus DecompressorFilter::decodeHeaders(Http::HeaderMap& hea
 
 Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::HeaderMap& headers,
                                                             bool end_stream) {
+  printf(__FILE__ ":%d * encodeHeaders() \n", __LINE__);
   if (end_stream) {
     return Http::FilterHeadersStatus::Continue;
   }
@@ -54,6 +55,7 @@ Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::HeaderMap& hea
 
 Http::FilterDataStatus DecompressorFilter::encodeData(Buffer::Instance& data,
                                                       bool /* end_stream */) {
+  printf(__FILE__ ":%d * encodeData() decompressor_:%d\n", __LINE__, !!decompressor_);
   if (decompressor_) {
     Buffer::OwnedImpl output_buffer;
     decompressor_->decompress(data, output_buffer);

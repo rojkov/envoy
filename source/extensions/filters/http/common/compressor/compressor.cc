@@ -76,6 +76,7 @@ Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::HeaderMap& heade
 
 Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::HeaderMap& headers,
                                                           bool end_stream) {
+  printf(__FILE__ ":%d * encodeHeaders() \n", __LINE__);
   if (!end_stream && !skip_compression_ && isMinimumContentLength(headers) &&
       isContentTypeAllowed(headers) && !hasCacheControlNoTransform(headers) &&
       isEtagAllowed(headers) && isTransferEncodingAllowed(headers) && !headers.ContentEncoding()) {
@@ -93,6 +94,7 @@ Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::HeaderMap& heade
 
 Http::FilterDataStatus CompressorFilter::encodeData(Buffer::Instance& data, bool end_stream) {
   if (!skip_compression_) {
+    printf(__FILE__ ":%d * encodeData() compressor_:%d\n", __LINE__, !!compressor_);
     config_->stats().total_uncompressed_bytes_.add(data.length());
     compressor_->compress(data, end_stream ? Compressor::State::Finish : Compressor::State::Flush);
     config_->stats().total_compressed_bytes_.add(data.length());
