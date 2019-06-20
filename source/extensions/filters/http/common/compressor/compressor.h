@@ -18,6 +18,12 @@ namespace HttpFilters {
 namespace Common {
 namespace Compressors {
 
+enum class CompressionDirection {
+  Response,
+  Request,
+  ResponseAndRequest,
+};
+
 /**
  * All compressor filter stats. @see stats_macros.h
  * "total_uncompressed_bytes" only includes bytes
@@ -68,7 +74,8 @@ public:
   bool disableOnEtagHeader() const { return disable_on_etag_header_; }
   bool removeAcceptEncodingHeader() const { return remove_accept_encoding_header_; }
   uint32_t minimumLength() const { return content_length_; }
-  const std::string contentEncoding() const { return content_encoding_; };
+  const std::string contentEncoding() const { return content_encoding_; }
+  CompressionDirection compressionDirection() const { return compression_direction_; }
   const std::vector<std::string> registeredCompressors() const { return registered_compressors_; }
 
   virtual ~CompressorFilterConfig();
@@ -81,8 +88,9 @@ protected:
 private:
   static StringUtil::CaseUnorderedSet
   contentTypeSet(const Protobuf::RepeatedPtrField<std::string>& types);
-
   static uint32_t contentLengthUint(Protobuf::uint32 length);
+  static CompressionDirection compressionDirectionEnum(
+    envoy::config::filter::http::compressor::v2::Compressor_CompressionDirection compression_direction);
 
   static CompressorStats generateStats(const std::string& prefix, Stats::Scope& scope) {
     return CompressorStats{ALL_COMPRESSOR_STATS(POOL_COUNTER_PREFIX(scope, prefix))};
@@ -93,6 +101,7 @@ private:
   StringUtil::CaseUnorderedSet content_type_values_;
   bool disable_on_etag_header_;
   bool remove_accept_encoding_header_;
+  CompressionDirection compression_direction_;
   CompressorStats stats_;
   Runtime::Loader& runtime_;
   std::string content_encoding_;
@@ -112,9 +121,7 @@ public:
 
   // Http::StreamDecoderFilter
   Http::FilterHeadersStatus decodeHeaders(Http::HeaderMap& headers, bool end_stream) override;
-  Http::FilterDataStatus decodeData(Buffer::Instance&, bool) override {
-    return Http::FilterDataStatus::Continue;
-  }
+  Http::FilterDataStatus decodeData(Buffer::Instance& data, bool end_stream) override;
   Http::FilterTrailersStatus decodeTrailers(Http::HeaderMap&) override {
     return Http::FilterTrailersStatus::Continue;
   }
@@ -152,8 +159,10 @@ private:
   void insertVaryHeader(Http::HeaderMap& headers);
 
   bool skip_compression_;
+  bool enable_request_compression_ = {};
   Buffer::OwnedImpl compressed_data_;
   std::unique_ptr<Compressor::Compressor> compressor_;
+  std::unique_ptr<Compressor::Compressor> request_compressor_;
   CompressorFilterConfigSharedPtr config_;
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};

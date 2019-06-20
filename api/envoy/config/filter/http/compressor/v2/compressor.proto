@@ -32,4 +32,15 @@ message Compressor {
   // If true, removes accept-encoding from the request headers before dispatching it to the upstream
   // so that responses do not get compressed before reaching the filter.
   bool remove_accept_encoding_header = 4;
+
+  enum CompressionDirection {
+    DEFAULT = 0;
+    RESPONSE = 1;
+    REQUEST = 2;
+    RESPONSE_AND_REQUEST = 3;
+  }
+
+  // A value used to set the direction of compression. The default value is to compress
+  // HTTP response bodies only.
+  CompressionDirection compression_direction = 5;
 }

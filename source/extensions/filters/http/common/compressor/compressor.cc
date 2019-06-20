@@ -33,6 +33,7 @@ CompressorFilterConfig::CompressorFilterConfig(
       content_type_values_(contentTypeSet(compressor.content_type())),
       disable_on_etag_header_(compressor.disable_on_etag_header()),
       remove_accept_encoding_header_(compressor.remove_accept_encoding_header()),
+      compression_direction_(compressionDirectionEnum(compressor.compression_direction())),
       stats_(generateStats(stats_prefix, scope)), runtime_(runtime),
       content_encoding_(content_encoding) {
   registered_compressors_.push_back(content_encoding);
@@ -56,22 +57,69 @@ uint32_t CompressorFilterConfig::contentLengthUint(Protobuf::uint32 length) {
   return length >= MinimumContentLength ? length : MinimumContentLength;
 }
 
+CompressionDirection CompressorFilterConfig::compressionDirectionEnum(
+    envoy::config::filter::http::compressor::v2::Compressor_CompressionDirection
+        compression_direction) {
+  switch (compression_direction) {
+  case envoy::config::filter::http::compressor::v2::Compressor_CompressionDirection_RESPONSE:
+    return CompressionDirection::Response;
+  case envoy::config::filter::http::compressor::v2::Compressor_CompressionDirection_REQUEST:
+    return CompressionDirection::Request;
+  case envoy::config::filter::http::compressor::v2::
+      Compressor_CompressionDirection_RESPONSE_AND_REQUEST:
+    return CompressionDirection::ResponseAndRequest;
+  default:
+    return CompressionDirection::Response;
+  }
+}
+
 CompressorFilter::CompressorFilter(CompressorFilterConfigSharedPtr config)
     : skip_compression_{true}, compressor_(), config_(std::move(config)) {}
 
 Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::HeaderMap& headers, bool) {
-  if (config_->runtime().snapshot().featureEnabled(config_->featureName(), 100) &&
-      isAcceptEncodingAllowed(headers)) {
-    compressor_ = config_->makeCompressor();
-    skip_compression_ = false;
-    if (config_->removeAcceptEncodingHeader()) {
-      headers.removeAcceptEncoding();
+  if (config_->runtime().snapshot().featureEnabled(config_->featureName(), 100)) {
+    if (config_->compressionDirection() != CompressionDirection::Request &&
+        isAcceptEncodingAllowed(headers)) {
+      skip_compression_ = false;
+      compressor_ = config_->makeCompressor();
+      if (config_->removeAcceptEncodingHeader()) {
+        headers.removeAcceptEncoding();
+      }
+    } else {
+      config_->stats().not_compressed_.inc();
+    }
+
+    if ((config_->compressionDirection() == CompressionDirection::Response ||
+         config_->compressionDirection() == CompressionDirection::ResponseAndRequest)) {
+      printf(__FILE__ ":%d * decodeHeaders() enable_request\n", __LINE__);
+      // TODO: check request's ContentEncoding allows request body compression
+      enable_request_compression_ = true;
+      request_compressor_ = config_->makeCompressor();
+      std::string new_header;
+      const Http::HeaderEntry* content_encoding = headers.ContentEncoding();
+      if (content_encoding) {
+        absl::StrAppend(&new_header, content_encoding->value().getStringView(), ",",
+                        config_->contentEncoding());
+      } else {
+        new_header = config_->contentEncoding();
+      }
+      headers.removeContentEncoding();
+      headers.insertContentEncoding().value(new_header);
     }
   } else {
     config_->stats().not_compressed_.inc();
   }
 
   return Http::FilterHeadersStatus::Continue;
+}
+
+Http::FilterDataStatus CompressorFilter::decodeData(Buffer::Instance& data, bool end_stream) {
+    printf(__FILE__ ":%d * decodeData() compressor_:%d\n", __LINE__, !!compressor_);
+  if (enable_request_compression_) {
+    printf(__FILE__ ":%d * decodeData() compressor_:%d\n", __LINE__, !!compressor_);
+    request_compressor_->compress(data, end_stream ? Compressor::State::Finish : Compressor::State::Flush);
+  }
+  return Http::FilterDataStatus::Continue;
 }
 
 Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::HeaderMap& headers,

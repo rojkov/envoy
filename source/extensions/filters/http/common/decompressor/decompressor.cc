@@ -28,13 +28,14 @@ Http::FilterHeadersStatus DecompressorFilter::decodeHeaders(Http::HeaderMap& hea
 
 Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::HeaderMap& headers,
                                                             bool end_stream) {
-  printf(__FILE__ ":%d * encodeHeaders() \n", __LINE__);
+  printf(__FILE__ ":%d * encodeHeaders() end_stream: %d\n", __LINE__, end_stream);
   if (end_stream) {
     return Http::FilterHeadersStatus::Continue;
   }
 
   if (config_->runtime().snapshot().featureEnabled(config_->featureName(), 100) &&
       !hasCacheControlNoTransform(headers) && isContentEncodingAllowed(headers)) {
+    printf(__FILE__ ":%d * encodeHeaders()\n", __LINE__);
     decompressor_ = config_->makeDecompressor();
     const auto all_codings = headers.ContentEncoding()->value().getStringView();
     const auto codings = StringUtil::cropLeft(all_codings, ",");
@@ -79,15 +80,18 @@ bool DecompressorFilter::hasCacheControlNoTransform(Http::HeaderMap& headers) co
 bool DecompressorFilter::isContentEncodingAllowed(Http::HeaderMap& headers) const {
   const Http::HeaderEntry* content_encoding = headers.ContentEncoding();
   if (!content_encoding) {
+  printf(__FILE__ ":%d * isContentEncodingAllowed() false\n", __LINE__);
     return false;
   }
 
   absl::string_view coding =
       StringUtil::trim(StringUtil::cropRight(content_encoding->value().getStringView(), ","));
   if (StringUtil::caseCompare("gzip", coding)) {
+  printf(__FILE__ ":%d * isContentEncodingAllowed() true\n", __LINE__);
     return true;
   }
 
+  printf(__FILE__ ":%d * isContentEncodingAllowed() false\n", __LINE__);
   return false;
 }
 
