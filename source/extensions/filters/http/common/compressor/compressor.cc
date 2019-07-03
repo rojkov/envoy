@@ -89,8 +89,7 @@ Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::HeaderMap& heade
       config_->stats().not_compressed_.inc();
     }
 
-    if ((config_->compressionDirection() == CompressionDirection::Response ||
-         config_->compressionDirection() == CompressionDirection::ResponseAndRequest)) {
+    if (config_->compressionDirection() != CompressionDirection::Response) {
       printf(__FILE__ ":%d * decodeHeaders() enable_request\n", __LINE__);
       // TODO: check request's ContentEncoding allows request body compression
       enable_request_compression_ = true;
@@ -113,11 +112,13 @@ Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::HeaderMap& heade
   return Http::FilterHeadersStatus::Continue;
 }
 
+// TODO(rojkov): harmonize `data` and `buffer` in signatures
 Http::FilterDataStatus CompressorFilter::decodeData(Buffer::Instance& data, bool end_stream) {
-    printf(__FILE__ ":%d * decodeData() compressor_:%d\n", __LINE__, !!compressor_);
+  printf(__FILE__ ":%d * decodeData() request_compressor_:%d enable_request_compression_:%d\n",
+         __LINE__, !!request_compressor_, enable_request_compression_);
   if (enable_request_compression_) {
-    printf(__FILE__ ":%d * decodeData() compressor_:%d\n", __LINE__, !!compressor_);
-    request_compressor_->compress(data, end_stream ? Compressor::State::Finish : Compressor::State::Flush);
+    request_compressor_->compress(data, end_stream ? Compressor::State::Finish
+                                                   : Compressor::State::Flush);
   }
   return Http::FilterDataStatus::Continue;
 }
@@ -141,8 +142,9 @@ Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::HeaderMap& heade
 }
 
 Http::FilterDataStatus CompressorFilter::encodeData(Buffer::Instance& data, bool end_stream) {
+  printf(__FILE__ ":%d * encodeData() compressor_:%d skip_compression:%d\n", __LINE__,
+         !!compressor_, skip_compression_);
   if (!skip_compression_) {
-    printf(__FILE__ ":%d * encodeData() compressor_:%d\n", __LINE__, !!compressor_);
     config_->stats().total_uncompressed_bytes_.add(data.length());
     compressor_->compress(data, end_stream ? Compressor::State::Finish : Compressor::State::Flush);
     config_->stats().total_compressed_bytes_.add(data.length());
@@ -174,6 +176,7 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
   const Http::HeaderEntry* accept_encoding = headers.AcceptEncoding();
   if (!accept_encoding) {
     config_->stats().no_accept_header_.inc();
+    printf(__FILE__ ":%d * isAcceptEncodingAllowed() no Accept-Encoding header\n", __LINE__);
     return false;
   }
 
@@ -210,6 +213,7 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
   if (pairs.empty()) {
     // If the Accept-Encoding field-value is empty, then only the "identity" encoding is acceptable.
     config_->stats().header_not_valid_.inc();
+    printf(__FILE__ ":%d * isAcceptEncodingAllowed() header not valid\n", __LINE__);
     return false;
   }
 
@@ -227,9 +231,11 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
           if (StringUtil::caseCompare("gzip", compr)) {
             config_->stats().header_gzip_.inc();
           }
+          printf(__FILE__ ":%d * isAcceptEncodingAllowed() true\n", __LINE__);
           return true;
         } else {
           config_->stats().header_compressor_overshadowed_.inc();
+          printf(__FILE__ ":%d * isAcceptEncodingAllowed() false\n", __LINE__);
           return false;
         }
       }
@@ -242,6 +248,7 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
       } else {
         config_->stats().header_not_valid_.inc();
       }
+      printf(__FILE__ ":%d * isAcceptEncodingAllowed() false\n", __LINE__);
       return false;
     }
 
@@ -249,15 +256,18 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
     if (pair.first == Http::Headers::get().AcceptEncodingValues.Wildcard) {
       if (pair.second > 0 && !allowed_compressors.empty()) {
         config_->stats().header_wildcard_.inc();
+        printf(__FILE__ ":%d * isAcceptEncodingAllowed() hmm...\n", __LINE__);
         return StringUtil::caseCompare(config_->contentEncoding(), allowed_compressors[0]);
       } else {
         config_->stats().header_not_valid_.inc();
+        printf(__FILE__ ":%d * isAcceptEncodingAllowed() false\n", __LINE__);
         return false;
       }
     }
   }
 
   config_->stats().header_not_valid_.inc();
+  printf(__FILE__ ":%d * isAcceptEncodingAllowed() false\n", __LINE__);
   return false;
 }
 

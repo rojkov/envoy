@@ -15,7 +15,8 @@ const uint64_t GzipHeaderValue = 16;
 GunzipFilterConfig::GunzipFilterConfig(
     const envoy::config::filter::http::gunzip::v2::Gunzip& gunzip, const std::string& stats_prefix,
     Stats::Scope& scope, Runtime::Loader& runtime)
-    : DecompressorFilterConfig(stats_prefix + "gunzip.", scope, runtime, "gzip"),
+    : DecompressorFilterConfig(gunzip.decompressor(), stats_prefix + "gunzip.", scope, runtime,
+                               "gzip"),
       window_bits_(windowBitsUint(gunzip.window_bits().value())) {}
 
 std::unique_ptr<Decompressor::Decompressor> GunzipFilterConfig::makeDecompressor() {

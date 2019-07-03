@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package envoy.config.filter.http.decompressor.v2;
+
+option java_outer_classname = "DecompressorProto";
+option java_multiple_files = true;
+option java_package = "io.envoyproxy.envoy.config.filter.http.decompressor.v2";
+option go_package = "v2";
+
+import "google/protobuf/wrappers.proto";
+
+import "validate/validate.proto";
+import "gogoproto/gogo.proto";
+
+// [#protodoc-title: Decompressor]
+
+message Decompressor {
+
+  enum DecompressionDirection {
+    DEFAULT = 0;
+    RESPONSE = 1;
+    REQUEST = 2;
+    RESPONSE_AND_REQUEST = 3;
+  }
+
+  // A value used to set the direction of decompression. The default value is to decompress
+  // HTTP request bodies only.
+  DecompressionDirection decompression_direction = 1;
+}

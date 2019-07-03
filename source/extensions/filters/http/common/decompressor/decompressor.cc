@@ -9,22 +9,74 @@ namespace HttpFilters {
 namespace Common {
 namespace Decompressors {
 
-DecompressorFilterConfig::DecompressorFilterConfig(const std::string& stats_prefix,
-                                                   Stats::Scope& scope, Runtime::Loader& runtime,
-                                                   const std::string& content_encoding)
-    : stats_(generateStats(stats_prefix, scope)), runtime_(runtime),
+DecompressorFilterConfig::DecompressorFilterConfig(
+    const envoy::config::filter::http::decompressor::v2::Decompressor& decompressor,
+    const std::string& stats_prefix, Stats::Scope& scope, Runtime::Loader& runtime,
+    const std::string& content_encoding)
+    : decompression_direction_(decompressionDirectionEnum(decompressor.decompression_direction())),
+      stats_(generateStats(stats_prefix, scope)), runtime_(runtime),
       content_encoding_(content_encoding) {}
+
+DecompressionDirection DecompressorFilterConfig::decompressionDirectionEnum(
+    envoy::config::filter::http::decompressor::v2::Decompressor_DecompressionDirection
+        decompression_direction) {
+  switch (decompression_direction) {
+  case envoy::config::filter::http::decompressor::v2::Decompressor_DecompressionDirection_RESPONSE:
+    return DecompressionDirection::Response;
+  case envoy::config::filter::http::decompressor::v2::Decompressor_DecompressionDirection_REQUEST:
+    return DecompressionDirection::Request;
+  case envoy::config::filter::http::decompressor::v2::
+      Decompressor_DecompressionDirection_RESPONSE_AND_REQUEST:
+    return DecompressionDirection::ResponseAndRequest;
+  default:
+    return DecompressionDirection::Request;
+  }
+}
+
+bool DecompressorFilterConfig::isRequestDecompressionEnabled() const {
+  return decompression_direction_ != DecompressionDirection::Response;
+}
+
+bool DecompressorFilterConfig::isResponseDecompressionEnabled() const {
+  return decompression_direction_ != DecompressionDirection::Request;
+}
 
 DecompressorFilter::DecompressorFilter(DecompressorFilterConfigSharedPtr config)
     : config_(std::move(config)) {}
 
 Http::FilterHeadersStatus DecompressorFilter::decodeHeaders(Http::HeaderMap& headers,
                                                             bool /* end_stream */) {
-  // TODO: inject proper Accept-Encoding header
-  headers.removeAcceptEncoding();
-  headers.insertAcceptEncoding().value(config_->contentEncoding());
+  if (config_->isResponseDecompressionEnabled()) {
+    // TODO: inject proper Accept-Encoding header
+    headers.removeAcceptEncoding();
+    headers.insertAcceptEncoding().value(config_->contentEncoding());
+    printf(__FILE__ ":%d * decodeHeaders() added Accept-Encoding: %s\n", __LINE__,
+           config_->contentEncoding().c_str());
+  }
+
+  if (config_->isRequestDecompressionEnabled() &&
+      config_->runtime().snapshot().featureEnabled(config_->featureName(), 100) &&
+      !hasCacheControlNoTransform(headers) && isContentEncodingAllowed(headers)) {
+    printf(__FILE__ ":%d * decodeHeaders() do decompress request\n", __LINE__);
+    request_decompressor_ = config_->makeDecompressor();
+    removeContentEncoding(headers);
+  }
+
   return Http::FilterHeadersStatus::Continue;
 };
+Http::FilterDataStatus DecompressorFilter::decodeData(Buffer::Instance& buffer,
+                                                      bool /* end_stream */) {
+  printf(__FILE__ ":%d * decodeData() request_decompressor_:%d\n", __LINE__,
+         !!request_decompressor_);
+  if (request_decompressor_) {
+    Buffer::OwnedImpl output_buffer;
+    request_decompressor_->decompress(buffer, output_buffer);
+    buffer.drain(buffer.length());
+    buffer.add(output_buffer);
+  }
+
+  return Http::FilterDataStatus::Continue;
+}
 
 Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::HeaderMap& headers,
                                                             bool end_stream) {
@@ -33,19 +85,12 @@ Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::HeaderMap& hea
     return Http::FilterHeadersStatus::Continue;
   }
 
-  if (config_->runtime().snapshot().featureEnabled(config_->featureName(), 100) &&
+  if (config_->isResponseDecompressionEnabled() &&
+      config_->runtime().snapshot().featureEnabled(config_->featureName(), 100) &&
       !hasCacheControlNoTransform(headers) && isContentEncodingAllowed(headers)) {
-    printf(__FILE__ ":%d * encodeHeaders()\n", __LINE__);
+    printf(__FILE__ ":%d * encodeHeaders() do decompress response\n", __LINE__);
     decompressor_ = config_->makeDecompressor();
-    const auto all_codings = headers.ContentEncoding()->value().getStringView();
-    const auto codings = StringUtil::cropLeft(all_codings, ",");
-    if (codings != all_codings) {
-      const auto remaining_encodings = std::string(StringUtil::trim(codings));
-      headers.removeContentEncoding();
-      headers.insertContentEncoding().value(remaining_encodings);
-    } else {
-      headers.removeContentEncoding();
-    }
+    removeContentEncoding(headers);
     // TODO: sanitize Transfer-Encoding
   } else {
     config_->stats().not_decompressed_.inc();
@@ -54,9 +99,9 @@ Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::HeaderMap& hea
   return Http::FilterHeadersStatus::Continue;
 }
 
-Http::FilterDataStatus DecompressorFilter::encodeData(Buffer::Instance& data,
-                                                      bool /* end_stream */) {
-  printf(__FILE__ ":%d * encodeData() decompressor_:%d\n", __LINE__, !!decompressor_);
+Http::FilterDataStatus DecompressorFilter::encodeData(Buffer::Instance& data, bool end_stream) {
+  printf(__FILE__ ":%d * encodeData() decompressor_:%d length:%lu end_stream:%d\n", __LINE__,
+         !!decompressor_, data.length(), end_stream);
   if (decompressor_) {
     Buffer::OwnedImpl output_buffer;
     decompressor_->decompress(data, output_buffer);
@@ -80,19 +125,31 @@ bool DecompressorFilter::hasCacheControlNoTransform(Http::HeaderMap& headers) co
 bool DecompressorFilter::isContentEncodingAllowed(Http::HeaderMap& headers) const {
   const Http::HeaderEntry* content_encoding = headers.ContentEncoding();
   if (!content_encoding) {
-  printf(__FILE__ ":%d * isContentEncodingAllowed() false\n", __LINE__);
+    printf(__FILE__ ":%d * isContentEncodingAllowed() false\n", __LINE__);
     return false;
   }
 
   absl::string_view coding =
       StringUtil::trim(StringUtil::cropRight(content_encoding->value().getStringView(), ","));
-  if (StringUtil::caseCompare("gzip", coding)) {
-  printf(__FILE__ ":%d * isContentEncodingAllowed() true\n", __LINE__);
+  if (StringUtil::caseCompare(config_->contentEncoding(), coding)) {
+    printf(__FILE__ ":%d * isContentEncodingAllowed() true\n", __LINE__);
     return true;
   }
 
   printf(__FILE__ ":%d * isContentEncodingAllowed() false\n", __LINE__);
   return false;
+}
+
+void DecompressorFilter::removeContentEncoding(Http::HeaderMap& headers) const {
+  const auto all_codings = headers.ContentEncoding()->value().getStringView();
+  const auto codings = StringUtil::cropLeft(all_codings, ",");
+  if (codings != all_codings) {
+    const auto remaining_encodings = std::string(StringUtil::trim(codings));
+    headers.removeContentEncoding();
+    headers.insertContentEncoding().value(remaining_encodings);
+  } else {
+    headers.removeContentEncoding();
+  }
 }
 
 } // namespace Decompressors
