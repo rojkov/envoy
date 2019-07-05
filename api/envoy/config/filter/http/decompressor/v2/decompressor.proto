@@ -16,6 +16,8 @@ import "gogoproto/gogo.proto";
 
 message Decompressor {
 
+  // TODO(rojkov): replace it with `disable_request_decompression` and
+  // `enable_response_decompression`
   enum DecompressionDirection {
     DEFAULT = 0;
     RESPONSE = 1;

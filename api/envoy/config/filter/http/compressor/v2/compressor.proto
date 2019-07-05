@@ -33,6 +33,7 @@ message Compressor {
   // so that responses do not get compressed before reaching the filter.
   bool remove_accept_encoding_header = 4;
 
+  // TODO(rojkov): replace it with `disable_response_compression` and `enable_request_compression`
   enum CompressionDirection {
     DEFAULT = 0;
     RESPONSE = 1;
