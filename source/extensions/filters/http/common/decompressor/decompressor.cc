@@ -88,8 +88,9 @@ Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::HeaderMap& hea
       !hasCacheControlNoTransform(headers) && isContentEncodingAllowed(headers)) {
     printf(__FILE__ ":%d * encodeHeaders() do decompress response\n", __LINE__);
     decompressor_ = config_->makeDecompressor();
+    headers.removeContentLength();
     removeContentEncoding(headers);
-    // TODO: sanitize Transfer-Encoding
+    sanitizeTransferEncoding(headers);
   } else {
     config_->stats().not_decompressed_.inc();
   }
@@ -171,6 +172,29 @@ void DecompressorFilter::injectAcceptEncoding(Http::HeaderMap& headers) const {
 
   headers.removeAcceptEncoding();
   headers.insertAcceptEncoding().value(StringUtil::join(encodings, ","));
+}
+
+/**
+ * Add "chunked" to the Transfer-Encoding header if it's not there yet.
+ */
+void DecompressorFilter::sanitizeTransferEncoding(Http::HeaderMap& headers) const {
+  const Http::HeaderEntry* transfer_encoding = headers.TransferEncoding();
+
+  if (!transfer_encoding) {
+    headers.insertTransferEncoding().value(Http::Headers::get().TransferEncodingValues.Chunked);
+    return;
+  }
+
+  if (StringUtil::caseFindToken(transfer_encoding->value().getStringView(), ",",
+                                Http::Headers::get().TransferEncodingValues.Chunked,
+                                true /* trim_whitespace */)) {
+    return;
+  }
+
+  const auto new_header = absl::StrCat(transfer_encoding->value().getStringView(), ", ",
+                                       Http::Headers::get().TransferEncodingValues.Chunked);
+  headers.removeTransferEncoding();
+  headers.insertTransferEncoding().value(new_header);
 }
 
 } // namespace Decompressors

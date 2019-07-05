@@ -96,9 +96,9 @@ Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::HeaderMap& heade
       request_compressor_ = config_->makeCompressor();
       std::string new_header;
       const Http::HeaderEntry* content_encoding = headers.ContentEncoding();
-      if (content_encoding) {
-        absl::StrAppend(&new_header, content_encoding->value().getStringView(), ",",
-                        config_->contentEncoding());
+      if (content_encoding && content_encoding->value().getStringView().size() > 0) {
+        new_header = absl::StrCat(content_encoding->value().getStringView(), ", ",
+                                  config_->contentEncoding());
       } else {
         new_header = config_->contentEncoding();
       }
