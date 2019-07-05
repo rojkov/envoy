@@ -109,6 +109,7 @@ private:
   bool hasCacheControlNoTransform(Http::HeaderMap& headers) const;
   bool isContentEncodingAllowed(Http::HeaderMap& headers) const;
   void removeContentEncoding(Http::HeaderMap& headers) const;
+  void injectAcceptEncoding(Http::HeaderMap& headers) const;
 
   DecompressorFilterConfigSharedPtr config_;
   std::unique_ptr<Decompressor::Decompressor> decompressor_;

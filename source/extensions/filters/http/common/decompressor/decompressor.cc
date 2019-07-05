@@ -47,9 +47,7 @@ DecompressorFilter::DecompressorFilter(DecompressorFilterConfigSharedPtr config)
 Http::FilterHeadersStatus DecompressorFilter::decodeHeaders(Http::HeaderMap& headers,
                                                             bool /* end_stream */) {
   if (config_->isResponseDecompressionEnabled()) {
-    // TODO: inject proper Accept-Encoding header
-    headers.removeAcceptEncoding();
-    headers.insertAcceptEncoding().value(config_->contentEncoding());
+    injectAcceptEncoding(headers);
     printf(__FILE__ ":%d * decodeHeaders() added Accept-Encoding: %s\n", __LINE__,
            config_->contentEncoding().c_str());
   }
@@ -143,6 +141,7 @@ bool DecompressorFilter::isContentEncodingAllowed(Http::HeaderMap& headers) cons
 void DecompressorFilter::removeContentEncoding(Http::HeaderMap& headers) const {
   const auto all_codings = headers.ContentEncoding()->value().getStringView();
   const auto codings = StringUtil::cropLeft(all_codings, ",");
+
   if (codings != all_codings) {
     const auto remaining_encodings = std::string(StringUtil::trim(codings));
     headers.removeContentEncoding();
@@ -150,6 +149,28 @@ void DecompressorFilter::removeContentEncoding(Http::HeaderMap& headers) const {
   } else {
     headers.removeContentEncoding();
   }
+}
+
+// TODO(rojkov): inject encoding with configurable qvalue with q=1 by default.
+void DecompressorFilter::injectAcceptEncoding(Http::HeaderMap& headers) const {
+  const Http::HeaderEntry* accept_encoding = headers.AcceptEncoding();
+
+  if (!accept_encoding) {
+    headers.insertAcceptEncoding().value(config_->contentEncoding());
+    return;
+  }
+
+  std::vector<std::string> encodings{config_->contentEncoding()};
+  for (const auto token : StringUtil::splitToken(accept_encoding->value().getStringView(), ",",
+                                                 false /* keep_empty */)) {
+    const auto encoding = StringUtil::trim(StringUtil::cropRight(token, ";"));
+    if (!StringUtil::caseCompare(config_->contentEncoding(), encoding)) {
+      encodings.push_back(std::string(token));
+    }
+  }
+
+  headers.removeAcceptEncoding();
+  headers.insertAcceptEncoding().value(StringUtil::join(encodings, ","));
 }
 
 } // namespace Decompressors
