@@ -35,7 +35,7 @@ protected:
   // BrotliFilterTest Helpers
   void setUpFilter(std::string&& json) {
     envoy::config::filter::http::brotli::v2::Brotli brotli;
-    MessageUtil::loadFromJson(json, brotli);
+    TestUtility::loadFromJson(json, brotli);
     config_.reset(new BrotliFilterConfig(brotli, "test.", stats_, runtime_));
     filter_ = std::make_unique<Common::Compressors::CompressorFilter>(config_);
   }
@@ -169,7 +169,7 @@ TEST_F(BrotliFilterTest, ContentLengthNoCompression) {
 
 // Verifies that compression is NOT skipped when content-length header is allowed.
 TEST_F(BrotliFilterTest, ContentLengthCompression) {
-  setUpFilter(R"EOF({"content_length": 500})EOF");
+  setUpFilter(R"EOF({"compressor": {"content_length": 500}})EOF");
   doRequest({{":method", "get"}, {"accept-encoding", "br"}}, true);
   doResponseCompression({{":method", "get"}, {"content-length", "1000"}});
 }
@@ -177,16 +177,17 @@ TEST_F(BrotliFilterTest, ContentLengthCompression) {
 // Verifies that compression is skipped when content-encoding header is NOT allowed.
 TEST_F(BrotliFilterTest, ContentTypeNoCompression) {
   setUpFilter(R"EOF(
-    {
-      "content_type": [
-        "text/html",
-        "text/css",
-        "text/plain",
-        "application/javascript",
-        "application/json",
-        "font/eot",
-        "image/svg+xml"
-      ]
+    {"compressor": {
+        "content_type": [
+          "text/html",
+          "text/css",
+          "text/plain",
+          "application/javascript",
+          "application/json",
+          "font/eot",
+          "image/svg+xml"
+        ]
+      }
     }
   )EOF");
   doRequest({{":method", "get"}, {"accept-encoding", "br"}}, true);
@@ -204,7 +205,7 @@ TEST_F(BrotliFilterTest, ContentTypeCompression) {
 
 // Verifies that compression is skipped when etag header is NOT allowed.
 TEST_F(BrotliFilterTest, EtagNoCompression) {
-  setUpFilter(R"EOF({ "disable_on_etag_header": true })EOF");
+  setUpFilter(R"EOF({"compressor": { "disable_on_etag_header": true }})EOF");
   doRequest({{":method", "get"}, {"accept-encoding", "br"}}, true);
   doResponseNoCompression(
       {{":method", "get"}, {"content-length", "256"}, {"etag", R"EOF(W/"686897696a7c876b7e")EOF"}});
@@ -295,7 +296,7 @@ TEST_F(BrotliFilterTest, VaryAlreadyHasAcceptEncoding) {
 TEST_F(BrotliFilterTest, RemoveAcceptEncodingHeader) {
   {
     Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, br, gzip"}};
-    setUpFilter(R"EOF({"remove_accept_encoding_header": true})EOF");
+    setUpFilter(R"EOF({"compressor": {"remove_accept_encoding_header": true}})EOF");
     EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, true));
     EXPECT_FALSE(headers.has("accept-encoding"));
   }
