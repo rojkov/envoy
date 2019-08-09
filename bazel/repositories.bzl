@@ -440,14 +440,6 @@ def _com_github_intel_qatzip():
     _repository_impl(
         name = "com_github_intel_qatzip",
         build_file = "@envoy//bazel/external:qatzip.BUILD",
-        patches = [
-            "@envoy//bazel/external:0001-QATAPP-12270-Fix-the-QATzip-Decompress-stream-API-is.patch",
-            "@envoy//bazel/external:0002-qatzip_stream-have-unambiguous-QZ_ERROR-prints.patch",
-            "@envoy//bazel/external:0003-qatzip-fix-resource-counting.patch",
-            "@envoy//bazel/external:0004-qatzip_stream-qzMalloc-PINNED_MEM-only-when-HW-is-av.patch",
-            "@envoy//bazel/external:0005-qatzip_stream-fix-buffer-offset.patch",
-        ],
-        patch_args = ["-p1"],
     )
     native.bind(
         name = "qatzip",

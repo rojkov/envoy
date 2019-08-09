@@ -51,6 +51,8 @@ cc_library(
     hdrs = glob([
         "quickassist/lookaside/access_layer/src/qat_direct/include/*.h",
         "quickassist/lookaside/access_layer/src/qat_direct/src/include/**/*.h",
+        "quickassist/lookaside/access_layer/src/common/include/*.h",
+        "quickassist/include/lac/*.h",
     ]),
     copts = QAT_INCLUDE_PATHS + QAT_DEFINES,
     deps = [
