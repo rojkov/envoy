@@ -161,7 +161,6 @@ def envoy_dependencies(skip_targets = []):
     _com_github_envoyproxy_sqlparser()
     _com_googlesource_quiche()
     _com_lightstep_tracer_cpp()
-    _com_intel_qat()
     _io_opentracing_cpp()
     _net_zlib()
     _org_brotli()
@@ -419,28 +418,13 @@ def _com_google_googletest():
         actual = "@com_google_googletest//:gtest",
     )
 
-def _com_intel_qat():
-    _repository_impl(
-        name = "com_intel_qat",
-        build_file = "@envoy//bazel/external:qat.BUILD",
-        patches = [
-            "@envoy//bazel/external:0001-Add-extern-C-to-several-headers.patch",
-            "@envoy//bazel/external:0002-cpa_types-do-not-define-TRUE-and-FALSE.patch",
-            "@envoy//bazel/external:0003-Fix-openssl-header-include-paths.patch",
-            "@envoy//bazel/external:0004-Udev-mock-implementation.patch",
-        ],
-        patch_args = ["-p1"],
-    )
-    native.bind(
-        name = "qat",
-        actual = "@com_intel_qat//:qat",
+def _com_github_intel_qatzip():
+    native.new_local_repository(
+        name = "com_github_intel_qatzip",
+        path = "/usr/lib64",
+        build_file = "@envoy//bazel/external:qatzip.BUILD"
     )
 
-def _com_github_intel_qatzip():
-    _repository_impl(
-        name = "com_github_intel_qatzip",
-        build_file = "@envoy//bazel/external:qatzip.BUILD",
-    )
     native.bind(
         name = "qatzip",
         actual = "@com_github_intel_qatzip//:qatzip",
