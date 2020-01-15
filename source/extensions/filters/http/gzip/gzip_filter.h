@@ -34,10 +34,12 @@ public:
   uint64_t windowBits() const { return window_bits_; }
 
 private:
-  static Compressor::ZlibCompressorImpl::CompressionLevel compressionLevelEnum(
-      envoy::extensions::filters::http::gzip::v3alpha::Gzip_CompressionLevel_Enum compression_level);
-  static Compressor::ZlibCompressorImpl::CompressionStrategy compressionStrategyEnum(
-      envoy::extensions::filters::http::gzip::v3alpha::Gzip_CompressionStrategy compression_strategy);
+  static Compressor::ZlibCompressorImpl::CompressionLevel
+  compressionLevelEnum(envoy::extensions::filters::http::gzip::v3alpha::Gzip_CompressionLevel_Enum
+                           compression_level);
+  static Compressor::ZlibCompressorImpl::CompressionStrategy
+  compressionStrategyEnum(envoy::extensions::filters::http::gzip::v3alpha::Gzip_CompressionStrategy
+                              compression_strategy);
 
   static uint64_t memoryLevelUint(Protobuf::uint32 level);
   static uint64_t windowBitsUint(Protobuf::uint32 window_bits);

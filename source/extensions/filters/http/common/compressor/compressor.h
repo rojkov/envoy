@@ -70,9 +70,10 @@ public:
   const std::map<std::string, uint32_t> registeredCompressors() const;
 
 protected:
-  CompressorFilterConfig(const envoy::extensions::filters::http::compressor::v3alpha::Compressor& compressor,
-                         const std::string& stats_prefix, Stats::Scope& scope,
-                         Runtime::Loader& runtime, const std::string& content_encoding);
+  CompressorFilterConfig(
+      const envoy::extensions::filters::http::compressor::v3alpha::Compressor& compressor,
+      const std::string& stats_prefix, Stats::Scope& scope, Runtime::Loader& runtime,
+      const std::string& content_encoding);
 
 private:
   static StringUtil::CaseUnorderedSet

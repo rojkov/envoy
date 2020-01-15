@@ -20,9 +20,9 @@ const uint64_t GzipHeaderValue = 16;
 
 } // namespace
 
-GzipFilterConfig::GzipFilterConfig(const envoy::extensions::filters::http::gzip::v3alpha::Gzip& gzip,
-                                   const std::string& stats_prefix, Stats::Scope& scope,
-                                   Runtime::Loader& runtime)
+GzipFilterConfig::GzipFilterConfig(
+    const envoy::extensions::filters::http::gzip::v3alpha::Gzip& gzip,
+    const std::string& stats_prefix, Stats::Scope& scope, Runtime::Loader& runtime)
     : CompressorFilterConfig(compressorConfig(gzip), stats_prefix + "gzip.", scope, runtime,
                              Http::Headers::get().ContentEncodingValues.Gzip),
       compression_level_(compressionLevelEnum(gzip.compression_level())),
@@ -73,7 +73,8 @@ uint64_t GzipFilterConfig::windowBitsUint(Protobuf::uint32 window_bits) {
 }
 
 const envoy::extensions::filters::http::compressor::v3alpha::Compressor
-GzipFilterConfig::compressorConfig(const envoy::extensions::filters::http::gzip::v3alpha::Gzip& gzip) {
+GzipFilterConfig::compressorConfig(
+    const envoy::extensions::filters::http::gzip::v3alpha::Gzip& gzip) {
   if (gzip.has_compressor()) {
     return gzip.compressor();
   }
