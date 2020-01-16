@@ -105,7 +105,6 @@ proto_library(
         "//envoy/data/cluster/v2alpha:pkg",
         "//envoy/data/core/v2alpha:pkg",
         "//envoy/data/tap/v2alpha:pkg",
-        "//envoy/extensions/filters/http/compressor/v3alpha:pkg",
         "//envoy/service/accesslog/v2:pkg",
         "//envoy/service/auth/v2:pkg",
         "//envoy/service/discovery/v2:pkg",
