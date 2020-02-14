@@ -1,6 +1,7 @@
 #!/bin/bash
+exit 0
 
-source "${TEST_SRCDIR}/envoy/test/integration/test_utility.sh"
+source "/home/rojkov/work/envoy/test/integration/test_utility.sh"
 
 function expect_fail_with_error() {
   log="${TEST_TMPDIR}/envoy.log"

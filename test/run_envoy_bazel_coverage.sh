@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 [[ -z "${SRCDIR}" ]] && SRCDIR="${PWD}"
 [[ -z "${VALIDATE_COVERAGE}" ]] && VALIDATE_COVERAGE=true
