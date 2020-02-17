@@ -158,7 +158,7 @@ private:
     const HeaderStat stat_;
   };
 
-  std::unique_ptr<EncodingDecision> chooseEncoding(const Http::HeaderEntry* accept_encoding) const;
+  std::unique_ptr<EncodingDecision> chooseEncoding(const Http::HeaderMap& headers) const;
 
   bool skip_compression_;
   Buffer::OwnedImpl compressed_data_;
