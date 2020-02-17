@@ -61,6 +61,8 @@ CompressorFilter::CompressorFilter(CompressorFilterConfigSharedPtr config)
     : skip_compression_{true}, compressor_(), config_(std::move(config)) {}
 
 Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::HeaderMap& headers, bool) {
+  accept_encoding_ = const_cast<Http::HeaderEntry*>(headers.AcceptEncoding());
+
   if (config_->runtime().snapshot().featureEnabled(config_->featureName(), 100) &&
       isAcceptEncodingAllowed(headers)) {
     skip_compression_ = false;
@@ -92,6 +94,18 @@ void CompressorFilter::setDecoderFilterCallbacks(Http::StreamDecoderFilterCallba
 
 Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::HeaderMap& headers,
                                                           bool end_stream) {
+  const Http::HeaderEntry* accept_encoding = headers.AcceptEncoding();
+  if (accept_encoding_) {
+    std::cout << config_->contentEncoding() << " REQUEST: " << accept_encoding_->value().getStringView() << std::endl;
+  } else {
+    std::cout << config_->contentEncoding() << " REQUEST: n/a" << std::endl;
+  }
+  if (accept_encoding) {
+    std::cout << config_->contentEncoding() << " RESPONSE: " << accept_encoding->value().getStringView() << std::endl;
+  } else {
+    std::cout << config_->contentEncoding() << " RESPONSE: n/a" << std::endl;
+  }
+
   if (!end_stream && !skip_compression_ && isMinimumContentLength(headers) &&
       isContentTypeAllowed(headers) && !hasCacheControlNoTransform(headers) &&
       isEtagAllowed(headers) && isTransferEncodingAllowed(headers) && !headers.ContentEncoding()) {
@@ -302,7 +316,11 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
 }
 
 bool CompressorFilter::isContentTypeAllowed(Http::HeaderMap& headers) const {
+  std::cout << config_->contentEncoding() << " config size of content_types: " << config_->contentTypeValues().size() << std::endl;
   const Http::HeaderEntry* content_type = headers.ContentType();
+  if (content_type) {
+    std::cout << config_->contentEncoding() << " received Content-Type: " << content_type->value().getStringView() << std::endl;
+  }
   if (content_type != nullptr && !config_->contentTypeValues().empty()) {
     const absl::string_view value =
         StringUtil::trim(StringUtil::cropRight(content_type->value().getStringView(), ";"));

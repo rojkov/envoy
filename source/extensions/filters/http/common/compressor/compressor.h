@@ -165,6 +165,7 @@ private:
   std::unique_ptr<Compressor::Compressor> compressor_;
   CompressorFilterConfigSharedPtr config_;
 
+  Http::HeaderEntry* accept_encoding_{nullptr};
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};
 };
