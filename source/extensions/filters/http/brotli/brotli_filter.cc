@@ -18,10 +18,11 @@ const uint64_t DefaultInputBlockBits = 24;
 
 } // namespace
 
-BrotliFilterConfig::BrotliFilterConfig(const envoy::extensions::filters::http::brotli::v3::Brotli& brotli,
-                                       const std::string& stats_prefix, Stats::Scope& scope,
-                                       Runtime::Loader& runtime)
-    : CompressorFilterConfig(compressorConfig(brotli), stats_prefix + "brotli.", scope, runtime, "br"),
+BrotliFilterConfig::BrotliFilterConfig(
+    const envoy::extensions::filters::http::brotli::v3::Brotli& brotli,
+    const std::string& stats_prefix, Stats::Scope& scope, Runtime::Loader& runtime)
+    : CompressorFilterConfig(compressorConfig(brotli), stats_prefix + "brotli.", scope, runtime,
+                             "br"),
       quality_(qualityUint(brotli.quality().value())),
       window_bits_(windowBitsUint(brotli.window_bits().value())),
       input_block_bits_(inputBlockBitsUint(brotli.input_block_bits().value())),
@@ -62,18 +63,17 @@ std::unique_ptr<Compressor::Compressor> BrotliFilterConfig::makeCompressor() {
 }
 
 const envoy::extensions::filters::http::compressor::v3::Compressor
-BrotliFilterConfig::compressorConfig(const envoy::extensions::filters::http::brotli::v3::Brotli& brotli) {
+BrotliFilterConfig::compressorConfig(
+    const envoy::extensions::filters::http::brotli::v3::Brotli& brotli) {
   envoy::extensions::filters::http::compressor::v3::Compressor compressor = {};
   if (brotli.has_content_length()) {
-    compressor.set_allocated_content_length(
-        new Protobuf::UInt32Value(brotli.content_length()));
+    compressor.set_allocated_content_length(new Protobuf::UInt32Value(brotli.content_length()));
   }
   for (const auto& ctype : brotli.content_type()) {
     compressor.add_content_type(ctype);
   }
   compressor.set_disable_on_etag_header(brotli.disable_on_etag_header());
-  compressor.set_remove_accept_encoding_header(
-      brotli.remove_accept_encoding_header());
+  compressor.set_remove_accept_encoding_header(brotli.remove_accept_encoding_header());
   return compressor;
 }
 

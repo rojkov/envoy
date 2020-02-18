@@ -20,10 +20,9 @@ public:
   BrotliFilterFactory() : FactoryBase(HttpFilterNames::get().EnvoyBrotli) {}
 
 private:
-  Http::FilterFactoryCb
-  createFilterFactoryFromProtoTyped(const envoy::extensions::filters::http::brotli::v3::Brotli& config,
-                                    const std::string& stats_prefix,
-                                    Server::Configuration::FactoryContext& context) override;
+  Http::FilterFactoryCb createFilterFactoryFromProtoTyped(
+      const envoy::extensions::filters::http::brotli::v3::Brotli& config,
+      const std::string& stats_prefix, Server::Configuration::FactoryContext& context) override;
 };
 
 } // namespace Brotli

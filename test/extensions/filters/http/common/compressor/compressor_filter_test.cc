@@ -238,7 +238,7 @@ TEST_F(CompressorFilterTest, noAcceptEncodingHeader) {
 TEST_F(CompressorFilterTest, isAcceptEncodingAllowed) {
   {
     Http::TestHeaderMapImpl headers = {{"content-type", "text/html"}};
-    EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test, br", headers)); 
+    EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test, br", headers));
     EXPECT_EQ(1, stats_.counter("test.test.header_compressor_used").value());
   }
   {
@@ -817,7 +817,7 @@ TEST_F(CompressorFilterTest, VaryAlreadyHasAcceptEncoding) {
 // Verify removeAcceptEncoding header.
 TEST_F(CompressorFilterTest, RemoveAcceptEncodingHeader) {
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-    filter_->setDecoderFilterCallbacks(decoder_callbacks);
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   {
     Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, test, gzip, br"}};
     setUpFilter(R"EOF({"remove_accept_encoding_header": true})EOF");
