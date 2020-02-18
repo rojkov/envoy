@@ -164,8 +164,8 @@ private:
   Buffer::OwnedImpl compressed_data_;
   std::unique_ptr<Compressor::Compressor> compressor_;
   CompressorFilterConfigSharedPtr config_;
+  std::unique_ptr<std::string> accept_encoding_;
 
-  Http::HeaderEntry* accept_encoding_{nullptr};
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};
 };
