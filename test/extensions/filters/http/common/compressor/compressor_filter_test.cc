@@ -665,6 +665,8 @@ TEST_F(CompressorFilterTest, EtagCompression) {
   Http::TestHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"etag", "686897696a7c876b7e"}};
   feedBuffer(256);
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
   EXPECT_FALSE(headers.has("etag"));
   EXPECT_EQ("test", headers.get_("content-encoding"));
@@ -723,6 +725,8 @@ TEST_F(CompressorFilterTest, AcceptanceTransferEncoding) {
 
 // Content-Encoding: upstream response is already encoded.
 TEST_F(CompressorFilterTest, ContentEncodingAlreadyEncoded) {
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   Http::TestHeaderMapImpl response_headers{
       {":method", "get"}, {"content-length", "256"}, {"content-encoding", "deflate, gzip"}};
@@ -774,6 +778,8 @@ TEST_F(CompressorFilterTest, insertVaryHeader) {
 
 // Filter should set Vary header value with `accept-encoding`.
 TEST_F(CompressorFilterTest, NoVaryHeader) {
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   Http::TestHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   feedBuffer(256);
@@ -784,6 +790,8 @@ TEST_F(CompressorFilterTest, NoVaryHeader) {
 
 // Filter should set Vary header value with `accept-encoding` and preserve other values.
 TEST_F(CompressorFilterTest, VaryOtherValues) {
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   Http::TestHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"vary", "User-Agent, Cookie"}};
@@ -795,6 +803,8 @@ TEST_F(CompressorFilterTest, VaryOtherValues) {
 
 // Vary header should have only one `accept-encoding`value.
 TEST_F(CompressorFilterTest, VaryAlreadyHasAcceptEncoding) {
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   Http::TestHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"vary", "accept-encoding"}};
@@ -807,25 +817,16 @@ TEST_F(CompressorFilterTest, VaryAlreadyHasAcceptEncoding) {
 // Verify removeAcceptEncoding header.
 TEST_F(CompressorFilterTest, RemoveAcceptEncodingHeader) {
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+    filter_->setDecoderFilterCallbacks(decoder_callbacks);
   {
     Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, test, gzip, br"}};
     setUpFilter(R"EOF({"remove_accept_encoding_header": true})EOF");
-    filter_->setDecoderFilterCallbacks(decoder_callbacks);
     EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, true));
     EXPECT_FALSE(headers.has("accept-encoding"));
   }
   {
-    NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks2;
-    filter_->setDecoderFilterCallbacks(decoder_callbacks2);
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, gzip, br"}};
-    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, true));
-    EXPECT_TRUE(headers.has("accept-encoding"));
-    EXPECT_EQ("deflate, gzip, br", headers.get_("accept-encoding"));
-  }
-  {
     Http::TestHeaderMapImpl headers = {{"accept-encoding", "deflate, test, gzip, br"}};
     setUpFilter("{}");
-    filter_->setDecoderFilterCallbacks(decoder_callbacks);
     EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, true));
     EXPECT_TRUE(headers.has("accept-encoding"));
     EXPECT_EQ("deflate, test, gzip, br", headers.get_("accept-encoding"));
