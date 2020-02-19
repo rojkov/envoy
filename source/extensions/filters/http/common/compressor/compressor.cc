@@ -166,15 +166,11 @@ CompressorFilter::chooseEncoding(const Http::HeaderMap& headers) const {
     if (!content_type_value.empty() && !filter_config->contentTypeValues().empty()) {
       auto type = filter_config->contentTypeValues().find(content_type_value);
       if (type == filter_config->contentTypeValues().end()) {
-        std::cout << config_->contentEncoding() << " chooseEncoding(): skipped "
-                  << content_type_value << " for " << filter_config->contentEncoding() << std::endl;
         continue;
       }
     }
     auto enc = allowed_compressors.find(filter_config->contentEncoding());
     if (enc == allowed_compressors.end()) {
-      std::cout << config_->contentEncoding() << " chooseEncoding(): added to allowed_compressors "
-                << filter_config->contentEncoding() << std::endl;
       allowed_compressors.insert({filter_config->contentEncoding(), registration_count});
       ++registration_count;
     }
@@ -210,7 +206,6 @@ CompressorFilter::chooseEncoding(const Http::HeaderMap& headers) const {
   if (pairs.empty()) {
     // If the Accept-Encoding field-value is empty, then only the "identity" encoding is acceptable.
     config_->stats().header_not_valid_.inc();
-    std::cout << config_->contentEncoding() << " chooseEncoding(): 220" << std::endl;
     return std::make_unique<CompressorFilter::EncodingDecision>(
         Http::Headers::get().AcceptEncodingValues.Identity,
         CompressorFilter::EncodingDecision::HeaderStat::NotValid);
@@ -218,14 +213,6 @@ CompressorFilter::chooseEncoding(const Http::HeaderMap& headers) const {
 
   EncPair choice{Http::Headers::get().AcceptEncodingValues.Identity, 0};
   for (const auto pair : pairs) {
-    std::cout << config_->contentEncoding() << " pair: " << pair.first << " " << pair.second
-              << " choice: " << choice.first << " " << choice.second;
-    std::cout << " allowed_compressors size: " << allowed_compressors.size()
-              << " allowed_compressors.count(std::string(pair.first)):"
-              << allowed_compressors.count(std::string(pair.first)) << std::endl;
-    for (auto t : allowed_compressors) {
-      std::cout << "allowed compressor: " << t.first << std::endl;
-    }
     if ((pair.second > choice.second) &&
         (allowed_compressors.count(std::string(pair.first)) ||
          pair.first == Http::Headers::get().AcceptEncodingValues.Identity ||
@@ -236,8 +223,6 @@ CompressorFilter::chooseEncoding(const Http::HeaderMap& headers) const {
 
   if (!choice.second) {
     config_->stats().header_not_valid_.inc();
-    std::cout << config_->contentEncoding() << " chooseEncoding(): 238 header not valid"
-              << std::endl;
     return std::make_unique<CompressorFilter::EncodingDecision>(
         Http::Headers::get().AcceptEncodingValues.Identity,
         CompressorFilter::EncodingDecision::HeaderStat::NotValid);
@@ -246,7 +231,6 @@ CompressorFilter::chooseEncoding(const Http::HeaderMap& headers) const {
   // The "identity" encoding (no compression) is always available.
   if (choice.first == Http::Headers::get().AcceptEncodingValues.Identity) {
     config_->stats().header_identity_.inc();
-    std::cout << config_->contentEncoding() << " chooseEncoding(): 247" << std::endl;
     return std::make_unique<CompressorFilter::EncodingDecision>(
         Http::Headers::get().AcceptEncodingValues.Identity,
         CompressorFilter::EncodingDecision::HeaderStat::Identity);
@@ -280,7 +264,6 @@ CompressorFilter::chooseEncoding(const Http::HeaderMap& headers) const {
   }
 
   config_->stats().header_not_valid_.inc();
-  std::cout << config_->contentEncoding() << " chooseEncoding(): 281" << std::endl;
   return std::make_unique<CompressorFilter::EncodingDecision>(
       Http::Headers::get().AcceptEncodingValues.Identity,
       CompressorFilter::EncodingDecision::HeaderStat::NotValid);
@@ -327,8 +310,6 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
   }
 
   std::unique_ptr<CompressorFilter::EncodingDecision> decision = chooseEncoding(headers);
-  std::cout << config_->contentEncoding() << " chosen encoding:" << decision->encoding()
-            << std::endl;
   bool result = StringUtil::caseCompare(config_->contentEncoding(), decision->encoding());
   filter_state->setData(encoding_decision_key, std::move(decision),
                         StreamInfo::FilterState::StateType::ReadOnly);
@@ -336,20 +317,10 @@ bool CompressorFilter::isAcceptEncodingAllowed(const Http::HeaderMap& headers) c
 }
 
 bool CompressorFilter::isContentTypeAllowed(Http::HeaderMap& headers) const {
-  std::cout << config_->contentEncoding()
-            << " config size of content_types: " << config_->contentTypeValues().size()
-            << std::endl;
   const Http::HeaderEntry* content_type = headers.ContentType();
-  if (content_type) {
-    std::cout << config_->contentEncoding()
-              << " received Content-Type: " << content_type->value().getStringView() << std::endl;
-  }
   if (content_type != nullptr && !config_->contentTypeValues().empty()) {
     const absl::string_view value =
         StringUtil::trim(StringUtil::cropRight(content_type->value().getStringView(), ";"));
-    std::cout << config_->contentEncoding() << " isContentTypeAllowed():"
-              << (config_->contentTypeValues().find(value) != config_->contentTypeValues().end())
-              << std::endl;
     return config_->contentTypeValues().find(value) != config_->contentTypeValues().end();
   }
 
