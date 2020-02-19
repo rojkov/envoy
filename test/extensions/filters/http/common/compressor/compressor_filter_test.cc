@@ -646,6 +646,7 @@ TEST_F(CompressorFilterTest, ContentTypeNoCompression) {
   doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
   doResponseNoCompression(
       {{":method", "get"}, {"content-length", "256"}, {"content-type", "image/jpeg"}});
+  EXPECT_EQ(1, stats_.counter("test.test.header_not_valid").value());
 }
 
 // Verifies that compression is NOT skipped when content-encoding header is allowed.
