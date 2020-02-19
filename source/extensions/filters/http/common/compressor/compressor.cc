@@ -96,19 +96,6 @@ void CompressorFilter::setDecoderFilterCallbacks(Http::StreamDecoderFilterCallba
 
 Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::HeaderMap& headers,
                                                           bool end_stream) {
-  const Http::HeaderEntry* accept_encoding = headers.AcceptEncoding();
-  if (accept_encoding_ != nullptr) {
-    std::cout << config_->contentEncoding() << " REQUEST: " << *accept_encoding_ << std::endl;
-  } else {
-    std::cout << config_->contentEncoding() << " REQUEST: n/a" << std::endl;
-  }
-  if (accept_encoding) {
-    std::cout << config_->contentEncoding()
-              << " RESPONSE: " << accept_encoding->value().getStringView() << std::endl;
-  } else {
-    std::cout << config_->contentEncoding() << " RESPONSE: n/a" << std::endl;
-  }
-
   if (!end_stream && !skip_compression_ && isMinimumContentLength(headers) &&
       isAcceptEncodingAllowed(headers) && isContentTypeAllowed(headers) &&
       !hasCacheControlNoTransform(headers) && isEtagAllowed(headers) &&
@@ -159,12 +146,11 @@ std::unique_ptr<CompressorFilter::EncodingDecision>
 CompressorFilter::chooseEncoding(const Http::HeaderMap& headers) const {
   using EncPair = std::pair<absl::string_view, float>; // pair of {encoding, q_value}
   std::vector<EncPair> pairs;
-  std::string content_type_value{};
+  absl::string_view content_type_value;
 
   const Http::HeaderEntry* content_type = headers.ContentType();
   if (content_type != nullptr) {
-    content_type_value = std::string(
-        StringUtil::trim(StringUtil::cropRight(content_type->value().getStringView(), ";")));
+    content_type_value = StringUtil::trim(StringUtil::cropRight(content_type->value().getStringView(), ";"));
   }
 
   // There could be many compressors registered for the same content encoding, e.g. consider a case
