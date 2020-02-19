@@ -215,7 +215,7 @@ TEST_F(CompressorFilterTest, hasCacheControlNoTransform) {
 
 // Verifies that compression is skipped when cache-control header has no-transform value.
 TEST_F(CompressorFilterTest, hasCacheControlNoTransformNoCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test;q=0, deflate"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test;q=1, deflate"}}, true);
   doResponseNoCompression(
       {{":method", "get"}, {"content-length", "256"}, {"cache-control", "no-transform"}});
 }
@@ -273,7 +273,7 @@ TEST_F(CompressorFilterTest, isAcceptEncodingAllowed) {
   }
   {
     // test header is not valid due to q=0.
-    Http::TestHeaderMapImpl headers = {{"accept-encoding", "test;q=0,*;q=1"}};
+    Http::TestHeaderMapImpl headers = {{"content-type", "text/html"}};
     EXPECT_FALSE(isAcceptEncodingAllowed("test;q=0,*;q=1", headers));
     EXPECT_EQ(5, stats_.counter("test.test.header_compressor_used").value());
     EXPECT_EQ(1, stats_.counter("test.test.header_not_valid").value());
@@ -628,7 +628,7 @@ TEST_F(CompressorFilterTest, isContentTypeAllowed) {
   }
 }
 
-// Verifies that compression is skipped when content-encoding header is NOT allowed.
+// Verifies that compression is skipped when content-type header is NOT allowed.
 TEST_F(CompressorFilterTest, ContentTypeNoCompression) {
   setUpFilter(R"EOF(
     {

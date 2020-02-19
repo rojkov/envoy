@@ -58,7 +58,7 @@ uint32_t CompressorFilterConfig::contentLengthUint(Protobuf::uint32 length) {
 }
 
 CompressorFilter::CompressorFilter(CompressorFilterConfigSharedPtr config)
-    : skip_compression_{true}, compressor_(), config_(std::move(config)) {}
+    : skip_compression_{true}, config_(std::move(config)) {}
 
 Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::HeaderMap& headers, bool) {
   const Http::HeaderEntry* accept_encoding = headers.AcceptEncoding();
