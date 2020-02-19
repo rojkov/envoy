@@ -164,8 +164,9 @@ CompressorFilter::chooseEncoding(const Http::HeaderMap& headers) const {
            ->getDataReadOnly<CompressorRegistry>(compressorRegistryKey())
            .filter_configs_) {
     if (!content_type_value.empty() && !filter_config->contentTypeValues().empty()) {
-      auto type = filter_config->contentTypeValues().find(content_type_value);
-      if (type == filter_config->contentTypeValues().end()) {
+      auto iter = filter_config->contentTypeValues().find(content_type_value);
+      if (iter == filter_config->contentTypeValues().end()) {
+        // Skip adding this filter to the list of allowed compressors.
         continue;
       }
     }
