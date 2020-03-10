@@ -12,6 +12,8 @@ namespace HttpFilters {
  */
 class HttpFilterNameValues {
 public:
+  // Brotli filter
+  const std::string EnvoyBrotli = "envoy.brotli";
   // Buffer filter
   const std::string Buffer = "envoy.filters.http.buffer";
   // Cache filter
