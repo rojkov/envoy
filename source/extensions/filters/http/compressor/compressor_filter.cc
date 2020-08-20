@@ -52,7 +52,10 @@ CompressorFilterConfig::CompressorFilterConfig(
       content_type_values_(contentTypeSet(proto_config.content_type())),
       disable_on_etag_header_(proto_config.disable_on_etag_header()),
       remove_accept_encoding_header_(proto_config.remove_accept_encoding_header()),
-      stats_(generateStats(fmt::format("{}compressor.{}.{}", stats_prefix, proto_config.compressor_library().name(), compressor_factory->statsPrefix()), scope)),
+      stats_(generateStats(fmt::format("{}compressor.{}.{}", stats_prefix,
+                                       proto_config.compressor_library().name(),
+                                       compressor_factory->statsPrefix()),
+                           scope)),
       enabled_(proto_config.runtime_enabled(), runtime),
       content_encoding_(compressor_factory->contentEncoding()),
       compressor_factory_(std::move(compressor_factory)) {}
