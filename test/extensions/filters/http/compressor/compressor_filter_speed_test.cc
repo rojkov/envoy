@@ -38,6 +38,7 @@ public:
     return Http::CustomHeaders::get().ContentEncodingValues.Gzip;
   }
 
+private:
   const Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionLevel level_;
   const Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionStrategy strategy_;
   const int64_t window_bits_;
