@@ -42,7 +42,6 @@ envoy_cc_benchmark_binary(
         "//test/mocks/runtime:runtime_mocks",
         "//test/test_common:printers_lib",
         "//test/test_common:utility_lib",
-        "@envoy_api//envoy/extensions/filters/http/compressor/v3:pkg_cc_proto",
     ],
 )
 
