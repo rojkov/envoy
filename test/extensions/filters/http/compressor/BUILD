@@ -21,10 +21,15 @@ envoy_extension_cc_test(
     ],
     extension_name = "envoy.filters.http.compressor",
     deps = [
+        "//source/common/protobuf:utility_lib",
+        "//source/extensions/compression/gzip/compressor:config",
         "//source/extensions/filters/http/compressor:compressor_filter_lib",
         "//test/mocks/compression/compressor:compressor_mocks",
+        "//test/mocks/http:http_mocks",
+        "//test/mocks/protobuf:protobuf_mocks",
         "//test/mocks/runtime:runtime_mocks",
         "//test/test_common:utility_lib",
+        "@envoy_api//envoy/extensions/filters/http/compressor/v3:pkg_cc_proto",
     ],
 )
 
