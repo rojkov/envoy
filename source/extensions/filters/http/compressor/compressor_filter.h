@@ -50,8 +50,6 @@ struct CompressorStats {
   ALL_COMPRESSOR_STATS(GENERATE_COUNTER_STRUCT)
 };
 
-// TODO(rojkov): merge this class with Compressor::CompressorFilterConfig when the filter
-// `envoy.filters.http.gzip` is fully deprecated and dropped.
 class CompressorFilterConfig {
 public:
   CompressorFilterConfig() = delete;
