@@ -25,6 +25,9 @@ using testing::Return;
 
 class TestCompressorFactory : public Envoy::Compression::Compressor::CompressorFactory {
 public:
+  TestCompressorFactory(const std::string& content_encoding)
+  : content_encoding_(content_encoding) {}
+
   Envoy::Compression::Compressor::CompressorPtr createCompressor() override {
     auto compressor = std::make_unique<Compression::Compressor::MockCompressor>();
     EXPECT_CALL(*compressor, compress(_, _)).Times(expected_compress_calls_);
@@ -32,12 +35,13 @@ public:
   }
 
   const std::string& statsPrefix() const override { CONSTRUCT_ON_FIRST_USE(std::string, "test."); }
-  const std::string& contentEncoding() const override { CONSTRUCT_ON_FIRST_USE(std::string, "test"); }
+  const std::string& contentEncoding() const override { return content_encoding_; }
 
   void setExpectedCompressCalls(uint32_t calls) { expected_compress_calls_ = calls; }
 
 private:
   uint32_t expected_compress_calls_{1};
+  const std::string content_encoding_;
 };
 
 class CompressorFilterTest : public testing::Test {
@@ -103,8 +107,8 @@ protected:
   void setUpFilter(std::string&& json) {
     envoy::extensions::filters::http::compressor::v3::Compressor compressor;
     TestUtility::loadFromJson(json, compressor);
-    Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory =
-      std::make_unique<TestCompressorFactory>();
+    auto compressor_factory = std::make_unique<TestCompressorFactory>("test");
+    compressor_factory_ = compressor_factory.get();
     config_ =
         std::make_shared<CompressorFilterConfig>(compressor, "test.", stats_, runtime_, std::move(compressor_factory));
     filter_ = std::make_unique<CompressorFilter>(config_);
@@ -171,6 +175,7 @@ protected:
     EXPECT_EQ(1, stats_.counter("test.compressor.test.test.not_compressed").value());
   }
 
+  TestCompressorFactory* compressor_factory_;
   std::shared_ptr<CompressorFilterConfig> config_;
   std::unique_ptr<CompressorFilter> filter_;
   Buffer::OwnedImpl data_;
@@ -232,7 +237,7 @@ TEST_F(CompressorFilterTest, AcceptanceTestEncodingWithTrailers) {
   Http::TestRequestTrailerMapImpl trailers;
   EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->decodeTrailers(trailers));
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
-  //config_->setExpectedCompressCalls(2);
+  compressor_factory_->setExpectedCompressCalls(2);
   doResponseCompression(headers, true);
 }
 
@@ -274,7 +279,7 @@ TEST_F(CompressorFilterTest, NoAcceptEncodingHeader) {
   doRequest({{":method", "get"}, {}}, true);
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   doResponseNoCompression(headers);
-  EXPECT_EQ(1, stats_.counter("test.test.no_accept_header").value());
+  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.no_accept_header").value());
   EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
 }
 
@@ -282,98 +287,98 @@ TEST_F(CompressorFilterTest, NoAcceptEncodingHeader) {
 TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test, br"));
-    EXPECT_EQ(1, stats_.counter("test.test.header_compressor_used").value());
+    EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test;q=1.0, *;q=0.5"));
-    EXPECT_EQ(2, stats_.counter("test.test.header_compressor_used").value());
+    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("\tdeflate\t, test\t ; q\t =\t 1.0,\t * ;q=0.5"));
-    EXPECT_EQ(3, stats_.counter("test.test.header_compressor_used").value());
+    EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate,test;q=1.0,*;q=0"));
-    EXPECT_EQ(4, stats_.counter("test.test.header_compressor_used").value());
+    EXPECT_EQ(4, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test;q=0.2, br;q=1"));
-    EXPECT_EQ(5, stats_.counter("test.test.header_compressor_used").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("*"));
-    EXPECT_EQ(1, stats_.counter("test.test.header_wildcard").value());
-    EXPECT_EQ(5, stats_.counter("test.test.header_compressor_used").value());
+    EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_wildcard").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("*;q=1"));
-    EXPECT_EQ(2, stats_.counter("test.test.header_wildcard").value());
-    EXPECT_EQ(5, stats_.counter("test.test.header_compressor_used").value());
+    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_wildcard").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
     // test header is not valid due to q=0.
     EXPECT_FALSE(isAcceptEncodingAllowed("test;q=0,*;q=1"));
-    EXPECT_EQ(5, stats_.counter("test.test.header_compressor_used").value());
-    EXPECT_EQ(1, stats_.counter("test.test.header_not_valid").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_compressor_used").value());
+    EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("identity, *;q=0"));
-    EXPECT_EQ(1, stats_.counter("test.test.header_identity").value());
+    EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_identity").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;q=0.5, *;q=0"));
-    EXPECT_EQ(2, stats_.counter("test.test.header_identity").value());
+    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_identity").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;q=0, *;q=0"));
-    EXPECT_EQ(2, stats_.counter("test.test.header_identity").value());
-    EXPECT_EQ(2, stats_.counter("test.test.header_not_valid").value());
+    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_identity").value());
+    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("xyz;q=1, br;q=0.2, *"));
-    EXPECT_EQ(3, stats_.counter("test.test.header_wildcard").value());
+    EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_wildcard").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("xyz;q=1, br;q=0.2, *;q=0"));
-    EXPECT_EQ(3, stats_.counter("test.test.header_wildcard").value());
-    EXPECT_EQ(3, stats_.counter("test.test.header_not_valid").value());
+    EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_wildcard").value());
+    EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("xyz;q=1, br;q=0.2"));
-    EXPECT_EQ(4, stats_.counter("test.test.header_not_valid").value());
+    EXPECT_EQ(4, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("identity"));
-    EXPECT_EQ(3, stats_.counter("test.test.header_identity").value());
+    EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_identity").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;q=1"));
-    EXPECT_EQ(4, stats_.counter("test.test.header_identity").value());
+    EXPECT_EQ(4, stats_.counter("test.compressor.test.test.header_identity").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;q=0"));
-    EXPECT_EQ(4, stats_.counter("test.test.header_identity").value());
-    EXPECT_EQ(5, stats_.counter("test.test.header_not_valid").value());
+    EXPECT_EQ(4, stats_.counter("test.compressor.test.test.header_identity").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     // Test that we return identity and ignore the invalid wildcard.
     EXPECT_FALSE(isAcceptEncodingAllowed("identity, *;q=0"));
-    EXPECT_EQ(5, stats_.counter("test.test.header_identity").value());
-    EXPECT_EQ(5, stats_.counter("test.test.header_not_valid").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_identity").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test;Q=.5, br"));
-    EXPECT_EQ(6, stats_.counter("test.test.header_compressor_used").value());
+    EXPECT_EQ(6, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;Q=0"));
-    EXPECT_EQ(5, stats_.counter("test.test.header_identity").value());
-    EXPECT_EQ(6, stats_.counter("test.test.header_not_valid").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_identity").value());
+    EXPECT_EQ(6, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed(""));
-    EXPECT_EQ(5, stats_.counter("test.test.header_identity").value());
-    EXPECT_EQ(7, stats_.counter("test.test.header_not_valid").value());
+    EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_identity").value());
+    EXPECT_EQ(7, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     // Compressor "test2" from an independent filter chain should not overshadow "test".
@@ -384,6 +389,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     TestUtility::loadFromJson(R"EOF(
 {
   "compressor_library": {
+     "name": "test2",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -393,7 +399,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
                               compressor);
     CompressorFilterConfigSharedPtr config2;
     Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory =
-      std::make_unique<TestCompressorFactory>();
+      std::make_unique<TestCompressorFactory>("test2");
     config2 =
         std::make_shared<CompressorFilterConfig>(compressor, "test2.", stats, runtime, std::move(compressor_factory));
     std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
@@ -402,44 +408,13 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
 
     EXPECT_TRUE(isAcceptEncodingAllowed("test;Q=.5,test2;q=0.75"));
     EXPECT_TRUE(isAcceptEncodingAllowed("test;Q=.5,test2;q=0.75", filter2));
-    EXPECT_EQ(0, stats_.counter("test.test.header_compressor_overshadowed").value());
-    EXPECT_EQ(7, stats_.counter("test.test.header_compressor_used").value());
-    EXPECT_EQ(1, stats.counter("test2.test2.header_compressor_used").value());
+    EXPECT_EQ(0, stats_.counter("test.compressor.test.test.header_compressor_overshadowed").value());
+    EXPECT_EQ(7, stats_.counter("test.compressor.test.test.header_compressor_used").value());
+    EXPECT_EQ(1, stats.counter("test2.compressor.test2.test.header_compressor_used").value());
   }
   {
     EXPECT_FALSE(isAcceptEncodingAllowed("test;q=invalid"));
-    EXPECT_EQ(8, stats_.counter("test.test.header_not_valid").value());
-  }
-  {
-    // check if the legacy "header_gzip" counter is incremented for gzip compression filter
-    Stats::TestUtil::TestStore stats;
-    ;
-    NiceMock<Runtime::MockLoader> runtime;
-    envoy::extensions::filters::http::compressor::v3::Compressor compressor;
-    TestUtility::loadFromJson(R"EOF(
-{
-  "compressor_library": {
-     "typed_config": {
-       "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
-     }
-  }
-}
-)EOF",
-                              compressor);
-    CompressorFilterConfigSharedPtr config2;
-    Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory =
-      std::make_unique<TestCompressorFactory>();
-    config2 =
-        std::make_shared<CompressorFilterConfig>(compressor, "test2.", stats, runtime, std::move(compressor_factory));
-    std::unique_ptr<CompressorFilter> gzip_filter = std::make_unique<CompressorFilter>(config2);
-    NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-    gzip_filter->setDecoderFilterCallbacks(decoder_callbacks);
-
-    EXPECT_TRUE(isAcceptEncodingAllowed("gzip;q=0.75", gzip_filter));
-    EXPECT_EQ(1, stats.counter("test2.gzip.header_gzip").value());
-    // This fake Accept-Encoding is ignored as a cached decision is used.
-    EXPECT_TRUE(isAcceptEncodingAllowed("fake", gzip_filter));
-    EXPECT_EQ(2, stats.counter("test2.gzip.header_gzip").value());
+    EXPECT_EQ(8, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
     // check if identity stat is increased twice (the second time via the cached path).
@@ -450,6 +425,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     TestUtility::loadFromJson(R"EOF(
 {
   "compressor_library": {
+     "name": "test2",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -459,7 +435,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
                               compressor);
     CompressorFilterConfigSharedPtr config2;
     Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory =
-      std::make_unique<TestCompressorFactory>();
+      std::make_unique<TestCompressorFactory>("test");
     config2 =
         std::make_shared<CompressorFilterConfig>(compressor, "test2.", stats, runtime, std::move(compressor_factory));
     std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
@@ -467,10 +443,10 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     filter2->setDecoderFilterCallbacks(decoder_callbacks);
 
     EXPECT_FALSE(isAcceptEncodingAllowed("identity", filter2));
-    EXPECT_EQ(1, stats.counter("test2.test.header_identity").value());
+    EXPECT_EQ(1, stats.counter("test2.compressor.test2.test.header_identity").value());
     // This fake Accept-Encoding is ignored as a cached decision is used.
     EXPECT_FALSE(isAcceptEncodingAllowed("fake", filter2));
-    EXPECT_EQ(2, stats.counter("test2.test.header_identity").value());
+    EXPECT_EQ(2, stats.counter("test2.compressor.test2.test.header_identity").value());
   }
   {
     // check if not_valid stat is increased twice (the second time via the cached path).
@@ -481,6 +457,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     TestUtility::loadFromJson(R"EOF(
 {
   "compressor_library": {
+     "name": "test2",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -490,7 +467,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
                               compressor);
     CompressorFilterConfigSharedPtr config2;
     Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory =
-      std::make_unique<TestCompressorFactory>();
+      std::make_unique<TestCompressorFactory>("test");
     config2 =
         std::make_shared<CompressorFilterConfig>(compressor, "test2.", stats, runtime, std::move(compressor_factory));
     std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
@@ -498,10 +475,10 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     filter2->setDecoderFilterCallbacks(decoder_callbacks);
 
     EXPECT_FALSE(isAcceptEncodingAllowed("test;q=invalid", filter2));
-    EXPECT_EQ(1, stats.counter("test2.test.header_not_valid").value());
+    EXPECT_EQ(1, stats.counter("test2.compressor.test2.test.header_not_valid").value());
     // This fake Accept-Encoding is ignored as a cached decision is used.
     EXPECT_FALSE(isAcceptEncodingAllowed("fake", filter2));
-    EXPECT_EQ(2, stats.counter("test2.test.header_not_valid").value());
+    EXPECT_EQ(2, stats.counter("test2.compressor.test2.test.header_not_valid").value());
   }
   {
     // Test that encoding decision is cached when used by multiple filters.
@@ -512,6 +489,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     TestUtility::loadFromJson(R"EOF(
 {
   "compressor_library": {
+     "name": "test",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -521,13 +499,13 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
                               compressor);
     CompressorFilterConfigSharedPtr config1;
     Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory1 =
-      std::make_unique<TestCompressorFactory>();
+      std::make_unique<TestCompressorFactory>("test1");
     config1 =
         std::make_shared<CompressorFilterConfig>(compressor, "test1.", stats, runtime, std::move(compressor_factory1));
     std::unique_ptr<CompressorFilter> filter1 = std::make_unique<CompressorFilter>(config1);
     CompressorFilterConfigSharedPtr config2;
     Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory2 =
-      std::make_unique<TestCompressorFactory>();
+      std::make_unique<TestCompressorFactory>("test2");
     config2 =
         std::make_shared<CompressorFilterConfig>(compressor, "test2.", stats, runtime, std::move(compressor_factory2));
     std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
@@ -538,13 +516,13 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     std::string accept_encoding = "test1;Q=.5,test2;q=0.75";
     EXPECT_FALSE(isAcceptEncodingAllowed(accept_encoding, filter1));
     EXPECT_TRUE(isAcceptEncodingAllowed(accept_encoding, filter2));
-    EXPECT_EQ(1, stats.counter("test1.test1.header_compressor_overshadowed").value());
-    EXPECT_EQ(1, stats.counter("test2.test2.header_compressor_used").value());
+    EXPECT_EQ(1, stats.counter("test1.compressor.test.test.header_compressor_overshadowed").value());
+    EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_compressor_used").value());
     EXPECT_FALSE(isAcceptEncodingAllowed(accept_encoding, filter1));
-    EXPECT_EQ(2, stats.counter("test1.test1.header_compressor_overshadowed").value());
+    EXPECT_EQ(2, stats.counter("test1.compressor.test.test.header_compressor_overshadowed").value());
     // These fake Accept-Encoding header is ignored. Instead the cached decision is used.
     EXPECT_TRUE(isAcceptEncodingAllowed("fake", filter2));
-    EXPECT_EQ(2, stats.counter("test2.test2.header_compressor_used").value());
+    EXPECT_EQ(2, stats.counter("test2.compressor.test.test.header_compressor_used").value());
   }
   {
     // Test that first registered filter is used when handling wildcard.
@@ -555,6 +533,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     TestUtility::loadFromJson(R"EOF(
 {
   "compressor_library": {
+     "name": "test",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -564,13 +543,13 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
                               compressor);
     CompressorFilterConfigSharedPtr config1;
     Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory1 =
-      std::make_unique<TestCompressorFactory>();
+      std::make_unique<TestCompressorFactory>("test1");
     config1 =
         std::make_shared<CompressorFilterConfig>(compressor, "test1.", stats, runtime, std::move(compressor_factory1));
     std::unique_ptr<CompressorFilter> filter1 = std::make_unique<CompressorFilter>(config1);
     CompressorFilterConfigSharedPtr config2;
     Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory2 =
-      std::make_unique<TestCompressorFactory>();
+      std::make_unique<TestCompressorFactory>("test2");
     config2 =
         std::make_shared<CompressorFilterConfig>(compressor, "test2.", stats, runtime, std::move(compressor_factory2));
     std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
@@ -581,8 +560,8 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     std::string accept_encoding = "*";
     EXPECT_TRUE(isAcceptEncodingAllowed(accept_encoding, filter1));
     EXPECT_FALSE(isAcceptEncodingAllowed(accept_encoding, filter2));
-    EXPECT_EQ(1, stats.counter("test1.test1.header_wildcard").value());
-    EXPECT_EQ(1, stats.counter("test2.test2.header_wildcard").value());
+    EXPECT_EQ(1, stats.counter("test1.compressor.test.test.header_wildcard").value());
+    EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_wildcard").value());
   }
 }
 
@@ -660,6 +639,7 @@ TEST_F(CompressorFilterTest, ContentLengthCompression) {
 {
   "content_length": 500,
   "compressor_library": {
+     "name": "test",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -774,6 +754,7 @@ TEST_F(CompressorFilterTest, ContentTypeNoCompression) {
         "image/svg+xml"
       ],
   "compressor_library": {
+     "name": "test",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -784,7 +765,7 @@ TEST_F(CompressorFilterTest, ContentTypeNoCompression) {
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"content-type", "image/jpeg"}};
   doResponseNoCompression(headers);
-  EXPECT_EQ(1, stats_.counter("test.test.header_not_valid").value());
+  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_not_valid").value());
   // Assert the resource is not compressible.
   EXPECT_FALSE(headers.has("vary"));
 }
@@ -824,23 +805,24 @@ TEST_F(CompressorFilterTest, IsEtagAllowed) {
   {
     Http::TestResponseHeaderMapImpl headers = {{"etag", R"EOF(W/"686897696a7c876b7e")EOF"}};
     EXPECT_TRUE(isEtagAllowed(headers));
-    EXPECT_EQ(0, stats_.counter("test.test.not_compressed_etag").value());
+    EXPECT_EQ(0, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
   }
   {
     Http::TestResponseHeaderMapImpl headers = {{"etag", "686897696a7c876b7e"}};
     EXPECT_TRUE(isEtagAllowed(headers));
-    EXPECT_EQ(0, stats_.counter("test.test.not_compressed_etag").value());
+    EXPECT_EQ(0, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
   }
   {
     Http::TestResponseHeaderMapImpl headers = {};
     EXPECT_TRUE(isEtagAllowed(headers));
-    EXPECT_EQ(0, stats_.counter("test.test.not_compressed_etag").value());
+    EXPECT_EQ(0, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
   }
 
   setUpFilter(R"EOF(
 {
   "disable_on_etag_header": true,
   "compressor_library": {
+     "name": "test",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -850,17 +832,17 @@ TEST_F(CompressorFilterTest, IsEtagAllowed) {
   {
     Http::TestResponseHeaderMapImpl headers = {{"etag", R"EOF(W/"686897696a7c876b7e")EOF"}};
     EXPECT_FALSE(isEtagAllowed(headers));
-    EXPECT_EQ(1, stats_.counter("test.test.not_compressed_etag").value());
+    EXPECT_EQ(1, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
   }
   {
     Http::TestResponseHeaderMapImpl headers = {{"etag", "686897696a7c876b7e"}};
     EXPECT_FALSE(isEtagAllowed(headers));
-    EXPECT_EQ(2, stats_.counter("test.test.not_compressed_etag").value());
+    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
   }
   {
     Http::TestResponseHeaderMapImpl headers = {};
     EXPECT_TRUE(isEtagAllowed(headers));
-    EXPECT_EQ(2, stats_.counter("test.test.not_compressed_etag").value());
+    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
   }
 }
 
@@ -870,6 +852,7 @@ TEST_F(CompressorFilterTest, EtagNoCompression) {
 {
   "disable_on_etag_header": true,
   "compressor_library": {
+     "name": "test",
      "typed_config": {
        "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
      }
@@ -880,7 +863,7 @@ TEST_F(CompressorFilterTest, EtagNoCompression) {
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"etag", R"EOF(W/"686897696a7c876b7e")EOF"}};
   doResponseNoCompression(headers);
-  EXPECT_EQ(1, stats_.counter("test.test.not_compressed_etag").value());
+  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
   EXPECT_FALSE(headers.has("vary"));
 }
 

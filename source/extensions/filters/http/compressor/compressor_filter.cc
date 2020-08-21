@@ -319,10 +319,6 @@ bool CompressorFilter::shouldCompress(const CompressorFilter::EncodingDecision& 
   case CompressorFilter::EncodingDecision::HeaderStat::ValidCompressor:
     if (should_compress) {
       config_->stats().header_compressor_used_.inc();
-      // TODO(rojkov): Remove this increment when the gzip-specific stat is gone.
-      if (absl::EqualsIgnoreCase("gzip", config_->contentEncoding())) {
-        config_->stats().header_gzip_.inc();
-      }
     } else {
       // Some other compressor filter in the same chain compressed the response body,
       // but not this filter.

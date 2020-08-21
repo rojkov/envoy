@@ -28,16 +28,12 @@ namespace Compressor {
  *
  * "header_compressor_overshadowed" is a number of requests skipped by this filter instance because
  * they were handled by another filter in the same filter chain.
- *
- * "header_gzip" is specific to the gzip filter and is deprecated since it duplicates
- * "header_compressor_used".
  */
 #define ALL_COMPRESSOR_STATS(COUNTER)                                                              \
   COUNTER(compressed)                                                                              \
   COUNTER(not_compressed)                                                                          \
   COUNTER(no_accept_header)                                                                        \
   COUNTER(header_identity)                                                                         \
-  COUNTER(header_gzip)                                                                             \
   COUNTER(header_compressor_used)                                                                  \
   COUNTER(header_compressor_overshadowed)                                                          \
   COUNTER(header_wildcard)                                                                         \
