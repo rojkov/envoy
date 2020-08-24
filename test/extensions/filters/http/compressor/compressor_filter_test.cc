@@ -65,10 +65,6 @@ protected:
   }
 
   // CompressorFilter private member functions
-  void sanitizeEtagHeader(Http::ResponseHeaderMap& headers) {
-    filter_->sanitizeEtagHeader(headers);
-  }
-
   void insertVaryHeader(Http::ResponseHeaderMap& headers) { filter_->insertVaryHeader(headers); }
 
   bool isContentTypeAllowed(Http::ResponseHeaderMap& headers) {
@@ -779,25 +775,31 @@ TEST_F(CompressorFilterTest, ContentTypeCompression) {
   doResponseCompression(headers, false);
 }
 
-// Verifies sanitizeEtagHeader function.
-TEST_F(CompressorFilterTest, SanitizeEtagHeader) {
-  {
+// Verifies sanitizeEtagHeader function for a weak etag.
+TEST_F(CompressorFilterTest, SanitizeEtagHeaderWeak) {
+    doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
     std::string etag_header{R"EOF(W/"686897696a7c876b7e")EOF"};
-    Http::TestResponseHeaderMapImpl headers = {{"etag", etag_header}};
-    sanitizeEtagHeader(headers);
+    Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}, {"etag", etag_header}};
+    doResponseCompression(headers, false);
     EXPECT_EQ(etag_header, headers.get_("etag"));
-  }
-  {
+}
+
+// Verifies sanitizeEtagHeader function for a weak (lower case) tag.
+TEST_F(CompressorFilterTest, SanitizeEtagHeaderWeakLowerCase) {
+    doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
     std::string etag_header{R"EOF(w/"686897696a7c876b7e")EOF"};
-    Http::TestResponseHeaderMapImpl headers = {{"etag", etag_header}};
-    sanitizeEtagHeader(headers);
+    Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}, {"etag", etag_header}};
+    doResponseCompression(headers, false);
     EXPECT_EQ(etag_header, headers.get_("etag"));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"etag", "686897696a7c876b7e"}};
-    sanitizeEtagHeader(headers);
+}
+
+// Verifies sanitizeEtagHeader function for a strong etag.
+TEST_F(CompressorFilterTest, SanitizeEtagHeaderStrong) {
+    doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+    std::string etag_header{"686897696a7c876b7e"};
+    Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}, {"etag", etag_header}};
+    doResponseCompression(headers, false);
     EXPECT_FALSE(headers.has("etag"));
-  }
 }
 
 // Verifies isEtagAllowed function.
