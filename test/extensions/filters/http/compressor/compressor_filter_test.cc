@@ -45,7 +45,7 @@ private:
 };
 
 class CompressorFilterTest : public testing::Test {
-protected:
+public:
   CompressorFilterTest() {
     ON_CALL(runtime_.snapshot_, featureEnabled("test.filter_enabled", 100))
         .WillByDefault(Return(true));
@@ -65,10 +65,6 @@ protected:
   }
 
   // CompressorFilter private member functions
-  bool isContentTypeAllowed(Http::ResponseHeaderMap& headers) {
-    return filter_->isContentTypeAllowed(headers);
-  }
-
   bool isEtagAllowed(Http::ResponseHeaderMap& headers) { return filter_->isEtagAllowed(headers); }
 
   bool hasCacheControlNoTransform(Http::ResponseHeaderMap& headers) {
@@ -645,95 +641,6 @@ TEST_F(CompressorFilterTest, ContentLengthCompression) {
   doResponseCompression(headers, false);
 }
 
-// Verifies isContentTypeAllowed function.
-TEST_F(CompressorFilterTest, IsContentTypeAllowed) {
-
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "text/html"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "text/xml"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "text/plain"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "application/javascript"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "image/svg+xml"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "application/json;charset=utf-8"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "application/json"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "application/xhtml+xml"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "Application/XHTML+XML"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "image/jpeg"}};
-    EXPECT_FALSE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "\ttext/html\t"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-
-  setUpFilter(R"EOF(
-    {
-      "content_type": [
-        "text/html",
-        "xyz/svg+xml",
-        "Test/INSENSITIVE"
-      ],
-  "compressor_library": {
-     "typed_config": {
-       "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
-     }
-  }
-    }
-  )EOF");
-
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "xyz/svg+xml"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "xyz/false"}};
-    EXPECT_FALSE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "image/jpeg"}};
-    EXPECT_FALSE(isContentTypeAllowed(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-type", "test/insensitive"}};
-    EXPECT_TRUE(isContentTypeAllowed(headers));
-  }
-}
-
 // Verifies that compression is skipped when content-type header is NOT allowed.
 TEST_F(CompressorFilterTest, ContentTypeNoCompression) {
   setUpFilter(R"EOF(
@@ -1053,6 +960,73 @@ TEST_F(CompressorFilterTest, RemoveAcceptEncodingHeader) {
     EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, true));
     EXPECT_TRUE(headers.has("accept-encoding"));
     EXPECT_EQ("deflate, test, gzip, br", headers.get_("accept-encoding"));
+  }
+}
+
+class IsContentTypeAllowedTest : public CompressorFilterTest,
+                                 public testing::WithParamInterface<std::tuple<std::string, bool, bool>> {
+};
+
+INSTANTIATE_TEST_SUITE_P(IsContentTypeAllowedDefault,
+                         IsContentTypeAllowedTest,
+                         testing::Values(std::make_tuple("text/html", true, false),
+                                         std::make_tuple("text/xml", true, false),
+                                         std::make_tuple("text/plain", true, false),
+                                         std::make_tuple("text/css", true, false),
+                                         std::make_tuple("application/javascript", true, false),
+                                         std::make_tuple("application/x-javascript", true, false),
+                                         std::make_tuple("text/javascript", true, false),
+                                         std::make_tuple("text/x-javascript", true, false),
+                                         std::make_tuple("text/ecmascript", true, false),
+                                         std::make_tuple("text/js", true, false),
+                                         std::make_tuple("text/jscript", true, false),
+                                         std::make_tuple("text/x-js", true, false),
+                                         std::make_tuple("application/ecmascript", true, false),
+                                         std::make_tuple("application/x-json", true, false),
+                                         std::make_tuple("application/xml", true, false),
+                                         std::make_tuple("application/json", true, false),
+                                         std::make_tuple("image/svg+xml", true, false),
+                                         std::make_tuple("application/xhtml+xml", true, false),
+                                         std::make_tuple("application/json;charset=utf-8", true, false),
+                                         std::make_tuple("Application/XHTML+XML", true, false),
+                                         std::make_tuple("\ttext/html\t", true, false),
+                                         std::make_tuple("image/jpeg", false, false),
+                                         std::make_tuple("xyz/svg+xml", true, true),
+                                         std::make_tuple("xyz/false", false, true),
+                                         std::make_tuple("image/jpeg", false, true),
+                                         std::make_tuple("test/insensitive", true, true)));
+
+// Verifies isContentTypeAllowed function.
+TEST_P(IsContentTypeAllowedTest, IsContentTypeAllowed) {
+  std::string content_type = std::get<0>(GetParam());
+  bool should_compress = std::get<1>(GetParam());
+  bool is_custom_config = std::get<2>(GetParam());
+
+  if (is_custom_config) {
+    setUpFilter(R"EOF(
+      {
+        "content_type": [
+          "text/html",
+          "xyz/svg+xml",
+          "Test/INSENSITIVE"
+        ],
+    "compressor_library": {
+       "name": "test",
+       "typed_config": {
+         "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
+       }
+    }
+      }
+    )EOF");
+  }
+
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  Http::TestResponseHeaderMapImpl headers{
+      {":method", "get"}, {"content-length", "256"}, {"content-type", content_type}};
+  if (should_compress) {
+    doResponseCompression(headers, false);
+  } else {
+    doResponseNoCompression(headers);
   }
 }
 
