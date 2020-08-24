@@ -65,8 +65,6 @@ protected:
   }
 
   // CompressorFilter private member functions
-  void insertVaryHeader(Http::ResponseHeaderMap& headers) { filter_->insertVaryHeader(headers); }
-
   bool isContentTypeAllowed(Http::ResponseHeaderMap& headers) {
     return filter_->isContentTypeAllowed(headers);
   }
@@ -966,23 +964,23 @@ TEST_F(CompressorFilterTest, InsertVaryHeader) {
     EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
   }
   {
-    Http::TestResponseHeaderMapImpl headers = {{"vary", "Cookie"}};
-    insertVaryHeader(headers);
+    Http::TestResponseHeaderMapImpl headers = {{"content-length", "256"}, {"vary", "Cookie"}};
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
     EXPECT_EQ("Cookie, Accept-Encoding", headers.get_("vary"));
   }
   {
-    Http::TestResponseHeaderMapImpl headers = {{"vary", "accept-encoding"}};
-    insertVaryHeader(headers);
+    Http::TestResponseHeaderMapImpl headers = {{"content-length", "256"}, {"vary", "accept-encoding"}};
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
     EXPECT_EQ("accept-encoding, Accept-Encoding", headers.get_("vary"));
   }
   {
-    Http::TestResponseHeaderMapImpl headers = {{"vary", "Accept-Encoding, Cookie"}};
-    insertVaryHeader(headers);
+    Http::TestResponseHeaderMapImpl headers = {{"content-length", "256"}, {"vary", "Accept-Encoding, Cookie"}};
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
     EXPECT_EQ("Accept-Encoding, Cookie", headers.get_("vary"));
   }
   {
-    Http::TestResponseHeaderMapImpl headers = {{"vary", "Accept-Encoding"}};
-    insertVaryHeader(headers);
+    Http::TestResponseHeaderMapImpl headers = {{"content-length", "256"}, {"vary", "Accept-Encoding"}};
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
     EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
   }
 }
