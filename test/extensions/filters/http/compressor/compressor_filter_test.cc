@@ -960,8 +960,9 @@ TEST_F(CompressorFilterTest, EmptyResponse) {
 // Verifies insertVaryHeader function.
 TEST_F(CompressorFilterTest, InsertVaryHeader) {
   {
-    Http::TestResponseHeaderMapImpl headers = {};
-    insertVaryHeader(headers);
+    Http::TestResponseHeaderMapImpl headers{
+      {"content-length", "256"}};
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
     EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
   }
   {
