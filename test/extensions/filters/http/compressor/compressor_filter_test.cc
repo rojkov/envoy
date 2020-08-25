@@ -680,108 +680,65 @@ TEST_F(CompressorFilterTest, ContentTypeCompression) {
   doResponseCompression(headers, false);
 }
 
-// Verifies sanitizeEtagHeader function for a weak etag.
-TEST_F(CompressorFilterTest, SanitizeEtagHeaderWeak) {
-    doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
-    std::string etag_header{R"EOF(W/"686897696a7c876b7e")EOF"};
-    Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}, {"etag", etag_header}};
-    doResponseCompression(headers, false);
-    EXPECT_EQ(etag_header, headers.get_("etag"));
-}
+class CompressWithEtagTest : public CompressorFilterTest,
+                             public testing::WithParamInterface<std::tuple<std::string, std::string, bool>> {
+};
 
-// Verifies sanitizeEtagHeader function for a weak (lower case) tag.
-TEST_F(CompressorFilterTest, SanitizeEtagHeaderWeakLowerCase) {
-    doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
-    std::string etag_header{R"EOF(w/"686897696a7c876b7e")EOF"};
-    Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}, {"etag", etag_header}};
-    doResponseCompression(headers, false);
-    EXPECT_EQ(etag_header, headers.get_("etag"));
-}
+INSTANTIATE_TEST_SUITE_P(CompressWithEtagSuite, CompressWithEtagTest,
+                         testing::Values(std::make_tuple("etag", R"EOF(W/"686897696a7c876b7e")EOF", true),
+                                         std::make_tuple("etag", R"EOF(w/"686897696a7c876b7e")EOF", true),
+                                         std::make_tuple("etag", "686897696a7c876b7e", false),
+                                         std::make_tuple("x-garbage", "garbagevalue", false)));
 
-// Verifies sanitizeEtagHeader function for a strong etag.
-TEST_F(CompressorFilterTest, SanitizeEtagHeaderStrong) {
-    doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
-    std::string etag_header{"686897696a7c876b7e"};
-    Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}, {"etag", etag_header}};
-    doResponseCompression(headers, false);
-    EXPECT_FALSE(headers.has("etag"));
-}
+TEST_P(CompressWithEtagTest, CompressionIsEnabledOnEtag) {
+  std::string header_name = std::get<0>(GetParam());
+  std::string header_value = std::get<1>(GetParam());
+  bool is_weak_etag = std::get<2>(GetParam());
 
-// Verifies isEtagAllowed function.
-TEST_F(CompressorFilterTest, IsEtagAllowed) {
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"etag", R"EOF(W/"686897696a7c876b7e")EOF"}};
-    EXPECT_TRUE(isEtagAllowed(headers));
-    EXPECT_EQ(0, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"etag", "686897696a7c876b7e"}};
-    EXPECT_TRUE(isEtagAllowed(headers));
-    EXPECT_EQ(0, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {};
-    EXPECT_TRUE(isEtagAllowed(headers));
-    EXPECT_EQ(0, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
-  }
-
-  setUpFilter(R"EOF(
-{
-  "disable_on_etag_header": true,
-  "compressor_library": {
-     "name": "test",
-     "typed_config": {
-       "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
-     }
-  }
-}
-)EOF");
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"etag", R"EOF(W/"686897696a7c876b7e")EOF"}};
-    EXPECT_FALSE(isEtagAllowed(headers));
-    EXPECT_EQ(1, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"etag", "686897696a7c876b7e"}};
-    EXPECT_FALSE(isEtagAllowed(headers));
-    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {};
-    EXPECT_TRUE(isEtagAllowed(headers));
-    EXPECT_EQ(2, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
-  }
-}
-
-// Verifies that compression is skipped when etag header is NOT allowed.
-TEST_F(CompressorFilterTest, EtagNoCompression) {
-  setUpFilter(R"EOF(
-{
-  "disable_on_etag_header": true,
-  "compressor_library": {
-     "name": "test",
-     "typed_config": {
-       "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
-     }
-  }
-}
-)EOF");
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
   Http::TestResponseHeaderMapImpl headers{
-      {":method", "get"}, {"content-length", "256"}, {"etag", R"EOF(W/"686897696a7c876b7e")EOF"}};
-  doResponseNoCompression(headers);
-  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
-  EXPECT_FALSE(headers.has("vary"));
-}
-
-// Verifies that compression is not skipped when strong etag header is present.
-TEST_F(CompressorFilterTest, EtagCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
-  Http::TestResponseHeaderMapImpl headers{
-      {":method", "get"}, {"content-length", "256"}, {"etag", "686897696a7c876b7e"}};
+      {":method", "get"}, {"content-length", "256"}, {header_name, header_value}};
   doResponseCompression(headers, false);
-  EXPECT_FALSE(headers.has("etag"));
+  EXPECT_EQ(0, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
   EXPECT_EQ("test", headers.get_("content-encoding"));
+  if (is_weak_etag) {
+    EXPECT_EQ(header_value, headers.get_("etag"));
+  } else {
+    EXPECT_FALSE(headers.has("etag"));
+  }
+}
+
+TEST_P(CompressWithEtagTest, CompressionIsDisabledOnEtag) {
+  std::string header_name = std::get<0>(GetParam());
+  std::string header_value = std::get<1>(GetParam());
+
+  setUpFilter(R"EOF(
+{
+  "disable_on_etag_header": true,
+  "compressor_library": {
+     "name": "test",
+     "typed_config": {
+       "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
+     }
+  }
+}
+)EOF");
+
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  Http::TestResponseHeaderMapImpl headers{
+      {":method", "get"}, {"content-length", "256"}, {header_name, header_value}};
+  if (StringUtil::CaseInsensitiveCompare()("etag", header_name)) {
+    doResponseNoCompression(headers);
+    EXPECT_EQ(1, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
+    EXPECT_FALSE(headers.has("vary"));
+    EXPECT_TRUE(headers.has("etag"));
+  } else {
+    doResponseCompression(headers, false);
+    EXPECT_EQ(0, stats_.counter("test.compressor.test.test.not_compressed_etag").value());
+    EXPECT_EQ("test", headers.get_("content-encoding"));
+    EXPECT_TRUE(headers.has("vary"));
+    EXPECT_FALSE(headers.has("etag"));
+  }
 }
 
 // Verifies isTransferEncodingAllowed function.
