@@ -286,9 +286,17 @@ INSTANTIATE_TEST_SUITE_P(AcceptEncodingTestSuite, AcceptEncodingTest,
                                          std::make_tuple("deflate, test;Q=.5, br", true, 1, 0, 0, 0),
                                          std::make_tuple("test;q=0,*;q=1", false, 0, 0, 1, 0),
                                          std::make_tuple("identity, *;q=0", false, 0, 0, 0, 1),
+                                         std::make_tuple("identity", false, 0, 0, 0, 1),
+                                         std::make_tuple("identity, *;q=0", false, 0, 0, 0, 1),
+                                         std::make_tuple("identity;q=1", false, 0, 0, 0, 1),
+                                         std::make_tuple("identity;q=0", false, 0, 0, 1, 0),
+                                         std::make_tuple("identity;Q=0", false, 0, 0, 1, 0),
                                          std::make_tuple("identity;q=0.5, *;q=0", false, 0, 0, 0, 1),
                                          std::make_tuple("identity;q=0, *;q=0", false, 0, 0, 1, 0),
-                                         std::make_tuple("xyz;q=1, br;q=0.2, *;q=0", false, 0, 0, 1, 0)
+                                         std::make_tuple("xyz;q=1, br;q=0.2, *;q=0", false, 0, 0, 1, 0),
+                                         std::make_tuple("xyz;q=1, br;q=0.2", false, 0, 0, 1, 0),
+                                         std::make_tuple("", false, 0, 0, 1, 0),
+                                         std::make_tuple("test;q=invalid", false, 0, 0, 1, 0)
                                          ));
 
 TEST_P(AcceptEncodingTest, AcceptEncodingAllowsCompression) {
@@ -387,23 +395,28 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("xyz;q=1, br;q=0.2"));
     EXPECT_EQ(4, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("identity"));
     EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_identity").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;q=1"));
     EXPECT_EQ(4, stats_.counter("test.compressor.test.test.header_identity").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;q=0"));
     EXPECT_EQ(4, stats_.counter("test.compressor.test.test.header_identity").value());
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
+    //1
     // Test that we return identity and ignore the invalid wildcard.
     EXPECT_FALSE(isAcceptEncodingAllowed("identity, *;q=0"));
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_identity").value());
@@ -415,11 +428,13 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     EXPECT_EQ(6, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;Q=0"));
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_identity").value());
     EXPECT_EQ(6, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed(""));
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_identity").value());
     EXPECT_EQ(7, stats_.counter("test.compressor.test.test.header_not_valid").value());
@@ -457,6 +472,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     EXPECT_EQ(1, stats.counter("test2.compressor.test2.test.header_compressor_used").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("test;q=invalid"));
     EXPECT_EQ(8, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
@@ -617,13 +633,6 @@ TEST_F(CompressorFilterTest, AcceptEncodingNoCompression) {
   // Even if compression is disallowed by a client we must let her know the resource is
   // compressible.
   EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
-}
-
-// Verifies that compression is NOT skipped when accept-encoding header is allowed.
-TEST_F(CompressorFilterTest, AcceptEncodingCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
-  Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
-  doResponseCompression(headers, false);
 }
 
 // Verifies isMinimumContentLength function.
