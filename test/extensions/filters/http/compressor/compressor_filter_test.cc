@@ -319,6 +319,9 @@ TEST_P(AcceptEncodingTest, AcceptEncodingAllowsCompression) {
   EXPECT_EQ(wildcard, stats_.counter("test.compressor.test.test.header_wildcard").value());
   EXPECT_EQ(not_valid, stats_.counter("test.compressor.test.test.header_not_valid").value());
   EXPECT_EQ(identity, stats_.counter("test.compressor.test.test.header_identity").value());
+  // Even if compression is disallowed by a client we must let her know the resource is
+  // compressible.
+  EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
 }
 
 // Verifies isAcceptEncodingAllowed function.
@@ -623,16 +626,6 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     EXPECT_EQ(1, stats.counter("test1.compressor.test.test.header_wildcard").value());
     EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_wildcard").value());
   }
-}
-
-// Verifies that compression is skipped when accept-encoding header is not allowed.
-TEST_F(CompressorFilterTest, AcceptEncodingNoCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test;q=0, deflate"}}, true);
-  Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
-  doResponseNoCompression(headers);
-  // Even if compression is disallowed by a client we must let her know the resource is
-  // compressible.
-  EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
 }
 
 // Verifies isMinimumContentLength function.
