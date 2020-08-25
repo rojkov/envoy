@@ -271,62 +271,117 @@ TEST_F(CompressorFilterTest, NoAcceptEncodingHeader) {
   EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
 }
 
+class AcceptEncodingTest : public CompressorFilterTest,
+                           public testing::WithParamInterface<std::tuple<std::string, bool, int, int, int, int>> {};
+
+INSTANTIATE_TEST_SUITE_P(AcceptEncodingTestSuite, AcceptEncodingTest,
+                         testing::Values(std::make_tuple("deflate, test, br", true, 1, 0, 0, 0),
+                                         std::make_tuple("deflate, test;q=1.0, *;q=0.5", true, 1, 0, 0, 0),
+                                         std::make_tuple("\tdeflate\t, test\t ; q\t =\t 1.0,\t * ;q=0.5", true, 1, 0, 0, 0),
+                                         std::make_tuple("deflate,test;q=1.0,*;q=0", true, 1, 0, 0, 0),
+                                         std::make_tuple("deflate, test;q=0.2, br;q=1", true, 1, 0, 0, 0),
+                                         std::make_tuple("*", true, 0, 1, 0, 0),
+                                         std::make_tuple("*;q=1", true, 0, 1, 0, 0),
+                                         std::make_tuple("xyz;q=1, br;q=0.2, *", true, 0, 1, 0, 0),
+                                         std::make_tuple("deflate, test;Q=.5, br", true, 1, 0, 0, 0),
+                                         std::make_tuple("test;q=0,*;q=1", false, 0, 0, 1, 0),
+                                         std::make_tuple("identity, *;q=0", false, 0, 0, 0, 1),
+                                         std::make_tuple("identity;q=0.5, *;q=0", false, 0, 0, 0, 1),
+                                         std::make_tuple("identity;q=0, *;q=0", false, 0, 0, 1, 0),
+                                         std::make_tuple("xyz;q=1, br;q=0.2, *;q=0", false, 0, 0, 1, 0)
+                                         ));
+
+TEST_P(AcceptEncodingTest, AcceptEncodingAllowsCompression) {
+  std::string accept_encoding = std::get<0>(GetParam());
+  bool is_compression_expected = std::get<1>(GetParam());
+  int compressor_used = std::get<2>(GetParam());
+  int wildcard = std::get<3>(GetParam());
+  int not_valid = std::get<4>(GetParam());
+  int identity = std::get<5>(GetParam());
+
+  doRequest({{":method", "get"}, {"accept-encoding", accept_encoding}}, true);
+  Http::TestResponseHeaderMapImpl headers{
+      {":method", "get"}, {"content-length", "256"}};
+  if (is_compression_expected) {
+    doResponseCompression(headers, false);
+  } else {
+    doResponseNoCompression(headers);
+  }
+  EXPECT_EQ(compressor_used, stats_.counter("test.compressor.test.test.header_compressor_used").value());
+  EXPECT_EQ(wildcard, stats_.counter("test.compressor.test.test.header_wildcard").value());
+  EXPECT_EQ(not_valid, stats_.counter("test.compressor.test.test.header_not_valid").value());
+  EXPECT_EQ(identity, stats_.counter("test.compressor.test.test.header_identity").value());
+}
+
 // Verifies isAcceptEncodingAllowed function.
 TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test, br"));
     EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test;q=1.0, *;q=0.5"));
     EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("\tdeflate\t, test\t ; q\t =\t 1.0,\t * ;q=0.5"));
     EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate,test;q=1.0,*;q=0"));
     EXPECT_EQ(4, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test;q=0.2, br;q=1"));
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("*"));
     EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_wildcard").value());
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("*;q=1"));
     EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_wildcard").value());
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
   {
+    //1
     // test header is not valid due to q=0.
     EXPECT_FALSE(isAcceptEncodingAllowed("test;q=0,*;q=1"));
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_compressor_used").value());
     EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("identity, *;q=0"));
     EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_identity").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;q=0.5, *;q=0"));
     EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_identity").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("identity;q=0, *;q=0"));
     EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_identity").value());
     EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("xyz;q=1, br;q=0.2, *"));
     EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_wildcard").value());
   }
   {
+    //1
     EXPECT_FALSE(isAcceptEncodingAllowed("xyz;q=1, br;q=0.2, *;q=0"));
     EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_wildcard").value());
     EXPECT_EQ(3, stats_.counter("test.compressor.test.test.header_not_valid").value());
@@ -355,6 +410,7 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
     EXPECT_EQ(5, stats_.counter("test.compressor.test.test.header_not_valid").value());
   }
   {
+    //1
     EXPECT_TRUE(isAcceptEncodingAllowed("deflate, test;Q=.5, br"));
     EXPECT_EQ(6, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   }
