@@ -69,20 +69,6 @@ public:
     return filter_->hasCacheControlNoTransform(headers);
   }
 
-  bool isAcceptEncodingAllowed(const std::string accept_encoding,
-                               const std::unique_ptr<CompressorFilter>& filter = nullptr) {
-    Http::TestResponseHeaderMapImpl headers;
-    if (filter) {
-      filter->accept_encoding_ = std::make_unique<std::string>(accept_encoding);
-      return filter->isAcceptEncodingAllowed(headers);
-    } else {
-      NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-      filter_->setDecoderFilterCallbacks(decoder_callbacks);
-      filter_->accept_encoding_ = std::make_unique<std::string>(accept_encoding);
-      return filter_->isAcceptEncodingAllowed(headers);
-    }
-  }
-
   bool isMinimumContentLength(Http::ResponseHeaderMap& headers) {
     return filter_->isMinimumContentLength(headers);
   }
@@ -271,6 +257,34 @@ TEST_F(CompressorFilterTest, NoAcceptEncodingHeader) {
   EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
 }
 
+TEST_F(CompressorFilterTest, CacheIdentityDecision) {
+  // check if identity stat is increased twice (the second time via the cached path).
+  compressor_factory_->setExpectedCompressCalls(0);
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
+  doRequest({{":method", "get"}, {"accept-encoding", "identity"}}, true);
+  Http::TestResponseHeaderMapImpl headers{
+      {":method", "get"}, {"content-length", "256"}};
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
+  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_identity").value());
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
+  EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_identity").value());
+}
+
+TEST_F(CompressorFilterTest, CacheHeaderNotValidDecision) {
+  // check if not_valid stat is increased twice (the second time via the cached path).
+  compressor_factory_->setExpectedCompressCalls(0);
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
+  doRequest({{":method", "get"}, {"accept-encoding", "test;q=invalid"}}, true);
+  Http::TestResponseHeaderMapImpl headers{
+      {":method", "get"}, {"content-length", "256"}};
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
+  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_not_valid").value());
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
+  EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_not_valid").value());
+}
+
 class AcceptEncodingTest : public CompressorFilterTest,
                            public testing::WithParamInterface<std::tuple<std::string, bool, int, int, int, int>> {};
 
@@ -435,43 +449,12 @@ TEST(MultipleFiltersTest, CacheEncodingDecision) {
   EXPECT_EQ(2, stats.counter("test2.compressor.test.test.header_compressor_used").value());
 }
 
-TEST_F(CompressorFilterTest, CacheIdentityDecision) {
-  // check if identity stat is increased twice (the second time via the cached path).
-  compressor_factory_->setExpectedCompressCalls(0);
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "identity"}}, true);
-  Http::TestResponseHeaderMapImpl headers{
-      {":method", "get"}, {"content-length", "256"}};
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_identity").value());
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-  EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_identity").value());
-}
-
-TEST_F(CompressorFilterTest, CacheHeaderNotValidDecision) {
-  // check if not_valid stat is increased twice (the second time via the cached path).
-  compressor_factory_->setExpectedCompressCalls(0);
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test;q=invalid"}}, true);
-  Http::TestResponseHeaderMapImpl headers{
-      {":method", "get"}, {"content-length", "256"}};
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.header_not_valid").value());
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-  EXPECT_EQ(2, stats_.counter("test.compressor.test.test.header_not_valid").value());
-}
-
-// Verifies isAcceptEncodingAllowed function.
-TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
-  {
-    // Test that first registered filter is used when handling wildcard.
-    Stats::TestUtil::TestStore stats;
-    ;
-    NiceMock<Runtime::MockLoader> runtime;
-    envoy::extensions::filters::http::compressor::v3::Compressor compressor;
-    TestUtility::loadFromJson(R"EOF(
+TEST(MultipleFiltersTest, UseFirstRegisteredFilterWhenWildcard) {
+  // Test that first registered filter is used when handling wildcard.
+  Stats::TestUtil::TestStore stats;
+  NiceMock<Runtime::MockLoader> runtime;
+  envoy::extensions::filters::http::compressor::v3::Compressor compressor;
+  TestUtility::loadFromJson(R"EOF(
 {
   "compressor_library": {
      "name": "test",
@@ -481,29 +464,36 @@ TEST_F(CompressorFilterTest, IsAcceptEncodingAllowed) {
   }
 }
 )EOF",
-                              compressor);
-    CompressorFilterConfigSharedPtr config1;
-    Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory1 =
-      std::make_unique<TestCompressorFactory>("test1");
-    config1 =
-        std::make_shared<CompressorFilterConfig>(compressor, "test1.", stats, runtime, std::move(compressor_factory1));
-    std::unique_ptr<CompressorFilter> filter1 = std::make_unique<CompressorFilter>(config1);
-    CompressorFilterConfigSharedPtr config2;
-    Envoy::Compression::Compressor::CompressorFactoryPtr compressor_factory2 =
-      std::make_unique<TestCompressorFactory>("test2");
-    config2 =
-        std::make_shared<CompressorFilterConfig>(compressor, "test2.", stats, runtime, std::move(compressor_factory2));
-    std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
-    NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-    filter1->setDecoderFilterCallbacks(decoder_callbacks);
-    filter2->setDecoderFilterCallbacks(decoder_callbacks);
+                            compressor);
+  CompressorFilterConfigSharedPtr config1;
+  auto compressor_factory1 = std::make_unique<TestCompressorFactory>("test1");
+  compressor_factory1->setExpectedCompressCalls(0);
+  config1 =
+      std::make_shared<CompressorFilterConfig>(compressor, "test1.", stats, runtime, std::move(compressor_factory1));
+  std::unique_ptr<CompressorFilter> filter1 = std::make_unique<CompressorFilter>(config1);
+  CompressorFilterConfigSharedPtr config2;
+  auto compressor_factory2 = std::make_unique<TestCompressorFactory>("test2");
+  compressor_factory2->setExpectedCompressCalls(0);
+  config2 =
+      std::make_shared<CompressorFilterConfig>(compressor, "test2.", stats, runtime, std::move(compressor_factory2));
+  std::unique_ptr<CompressorFilter> filter2 = std::make_unique<CompressorFilter>(config2);
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter1->setDecoderFilterCallbacks(decoder_callbacks);
+  filter2->setDecoderFilterCallbacks(decoder_callbacks);
 
-    std::string accept_encoding = "*";
-    EXPECT_TRUE(isAcceptEncodingAllowed(accept_encoding, filter1));
-    EXPECT_FALSE(isAcceptEncodingAllowed(accept_encoding, filter2));
-    EXPECT_EQ(1, stats.counter("test1.compressor.test.test.header_wildcard").value());
-    EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_wildcard").value());
-  }
+  Http::TestRequestHeaderMapImpl req_headers{{":method", "get"}, {"accept-encoding", "*"}};
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter1->decodeHeaders(req_headers, false));
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter2->decodeHeaders(req_headers, false));
+  Http::TestResponseHeaderMapImpl headers1{
+      {":method", "get"}, {"content-length", "256"}};
+  Http::TestResponseHeaderMapImpl headers2{
+      {":method", "get"}, {"content-length", "256"}};
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter1->encodeHeaders(headers1, false));
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter2->encodeHeaders(headers2, false));
+  EXPECT_EQ(1, stats.counter("test1.compressor.test.test.compressed").value());
+  EXPECT_EQ(0, stats.counter("test2.compressor.test.test.compressed").value());
+  EXPECT_EQ(1, stats.counter("test1.compressor.test.test.header_wildcard").value());
+  EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_wildcard").value());
 }
 
 // Verifies isMinimumContentLength function.
