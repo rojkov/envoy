@@ -423,19 +423,17 @@ TEST(MultipleFiltersTest, CacheEncodingDecision) {
   Http::TestRequestHeaderMapImpl req_headers2{{":method", "get"}, {"accept-encoding", "test1;Q=.5,test2;q=0.75"}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter1->decodeHeaders(req_headers1, false));
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter2->decodeHeaders(req_headers2, false));
-  Http::TestResponseHeaderMapImpl headers1{
+  Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}};
-  Http::TestResponseHeaderMapImpl headers2{
-      {":method", "get"}, {"content-length", "256"}};
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter1->encodeHeaders(headers1, false));
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter2->encodeHeaders(headers2, false));
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter1->encodeHeaders(headers, false));
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter2->encodeHeaders(headers, false));
   EXPECT_EQ(1, stats.counter("test1.compressor.test.test.header_compressor_overshadowed").value());
   EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_compressor_used").value());
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter1->encodeHeaders(headers1, false));
-  EXPECT_EQ(2, stats.counter("test1.compressor.test.test.header_compressor_overshadowed").value());
   // Reset headers as content-length got removed by filter2.
-  headers2 = {{":method", "get"}, {"content-length", "256"}};
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter2->encodeHeaders(headers2, false));
+  headers = {{":method", "get"}, {"content-length", "256"}};
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter1->encodeHeaders(headers, false));
+  EXPECT_EQ(2, stats.counter("test1.compressor.test.test.header_compressor_overshadowed").value());
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter2->encodeHeaders(headers, false));
   EXPECT_EQ(2, stats.counter("test2.compressor.test.test.header_compressor_used").value());
 }
 
