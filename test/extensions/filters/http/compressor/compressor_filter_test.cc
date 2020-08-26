@@ -65,10 +65,6 @@ public:
   }
 
   // CompressorFilter private member functions
-  bool hasCacheControlNoTransform(Http::ResponseHeaderMap& headers) {
-    return filter_->hasCacheControlNoTransform(headers);
-  }
-
   bool isMinimumContentLength(Http::ResponseHeaderMap& headers) {
     return filter_->isMinimumContentLength(headers);
   }
@@ -213,22 +209,6 @@ TEST_F(CompressorFilterTest, AcceptanceTestEncodingWithTrailers) {
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   compressor_factory_->setExpectedCompressCalls(2);
   doResponseCompression(headers, true);
-}
-
-// Verifies hasCacheControlNoTransform function.
-TEST_F(CompressorFilterTest, HasCacheControlNoTransform) {
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"cache-control", "no-cache"}};
-    EXPECT_FALSE(hasCacheControlNoTransform(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"cache-control", "no-transform"}};
-    EXPECT_TRUE(hasCacheControlNoTransform(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"cache-control", "No-Transform"}};
-    EXPECT_TRUE(hasCacheControlNoTransform(headers));
-  }
 }
 
 // Verifies that compression is skipped when cache-control header has no-transform value.
@@ -909,6 +889,30 @@ TEST_P(CompressWithEtagTest, CompressionIsDisabledOnEtag) {
     EXPECT_TRUE(headers.has("vary"));
     EXPECT_FALSE(headers.has("etag"));
   }
+}
+
+class HasCacheControlNoTransformTest : public CompressorFilterTest,
+                             public testing::WithParamInterface<std::tuple<std::string, int>> {
+                             };
+
+INSTANTIATE_TEST_SUITE_P(HasCacheControlNoTransformTestSuite, HasCacheControlNoTransformTest,
+                         testing::Values(std::make_tuple("no-cache", 1),
+                                         std::make_tuple("no-transform", 0),
+                                         std::make_tuple("No-Transform", 0)));
+
+TEST_P(HasCacheControlNoTransformTest, Validate) {
+  std::string cache_control = std::get<0>(GetParam());
+  int compressed = std::get<1>(GetParam());
+
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
+  compressor_factory_->setExpectedCompressCalls(0);
+
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  Http::TestResponseHeaderMapImpl headers{
+      {":method", "get"}, {"content-length", "256"}, {"cache-control", cache_control}};
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
+  EXPECT_EQ(compressed, stats_.counter("test.compressor.test.test.compressed").value());
 }
 
 } // namespace Compressor
