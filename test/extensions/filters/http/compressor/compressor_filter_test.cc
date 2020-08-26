@@ -65,10 +65,6 @@ public:
   }
 
   // CompressorFilter private member functions
-  bool isMinimumContentLength(Http::ResponseHeaderMap& headers) {
-    return filter_->isMinimumContentLength(headers);
-  }
-
   bool isTransferEncodingAllowed(Http::ResponseHeaderMap& headers) {
     return filter_->isTransferEncodingAllowed(headers);
   }
@@ -476,49 +472,6 @@ TEST(MultipleFiltersTest, UseFirstRegisteredFilterWhenWildcard) {
   EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_wildcard").value());
 }
 
-// Verifies isMinimumContentLength function.
-TEST_F(CompressorFilterTest, IsMinimumContentLength) {
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-length", "31"}};
-    EXPECT_TRUE(isMinimumContentLength(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-length", "29"}};
-    EXPECT_FALSE(isMinimumContentLength(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"transfer-encoding", "chunked"}};
-    EXPECT_TRUE(isMinimumContentLength(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"transfer-encoding", "Chunked"}};
-    EXPECT_TRUE(isMinimumContentLength(headers));
-  }
-
-  setUpFilter(R"EOF(
-{
-  "content_length": 500,
-  "compressor_library": {
-     "typed_config": {
-       "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
-     }
-  }
-}
-)EOF");
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-length", "501"}};
-    EXPECT_TRUE(isMinimumContentLength(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"transfer-encoding", "chunked"}};
-    EXPECT_TRUE(isMinimumContentLength(headers));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-length", "499"}};
-    EXPECT_FALSE(isMinimumContentLength(headers));
-  }
-}
-
 // Verifies that compression is skipped when content-length header is NOT allowed.
 TEST_F(CompressorFilterTest, ContentLengthNoCompression) {
   doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
@@ -911,6 +864,48 @@ TEST_P(HasCacheControlNoTransformTest, Validate) {
   doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"cache-control", cache_control}};
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
+  EXPECT_EQ(compressed, stats_.counter("test.compressor.test.test.compressed").value());
+}
+
+class IsMinimumContentLengthTest : public CompressorFilterTest,
+                             public testing::WithParamInterface<std::tuple<std::string, std::string, std::string, int>> {
+                             };
+
+INSTANTIATE_TEST_SUITE_P(IsMinimumContentLengthTestSuite, IsMinimumContentLengthTest,
+                         testing::Values(std::make_tuple("content-length", "31", "", 1),
+                                         std::make_tuple("content-length", "29", "", 0),
+                                         std::make_tuple("transfer-encoding", "chunked", "", 1),
+                                         std::make_tuple("transfer-encoding", "Chunked", "", 1),
+                                         std::make_tuple("transfer-encoding", "chunked", "\"content_length\": 500,", 1),
+                                         std::make_tuple("content-length", "501", "\"content_length\": 500,", 1),
+                                         std::make_tuple("content-length", "499", "\"content_length\": 500,", 0)
+                                         ));
+
+TEST_P(IsMinimumContentLengthTest, Validate) {
+  std::string header_name = std::get<0>(GetParam());
+  std::string header_value = std::get<1>(GetParam());
+  std::string content_length_config = std::get<2>(GetParam());
+  int compressed = std::get<3>(GetParam());
+
+  setUpFilter(fmt::format(R"EOF(
+{{
+  {}
+  "compressor_library": {{
+     "name": "test",
+     "typed_config": {{
+       "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
+     }}
+  }}
+}}
+)EOF", content_length_config));
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
+  filter_->setDecoderFilterCallbacks(decoder_callbacks);
+  compressor_factory_->setExpectedCompressCalls(0);
+
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  Http::TestResponseHeaderMapImpl headers{
+      {":method", "get"}, {header_name, header_value}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
   EXPECT_EQ(compressed, stats_.counter("test.compressor.test.test.compressed").value());
 }
