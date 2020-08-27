@@ -101,27 +101,14 @@ public:
   }
 
   void doResponseCompression(Http::TestResponseHeaderMapImpl& headers, bool with_trailers) {
-    uint64_t content_length;
-    ASSERT_TRUE(absl::SimpleAtoi(headers.get_("content-length"), &content_length));
-    feedBuffer(content_length);
-    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-    EXPECT_EQ("", headers.get_("content-length"));
-    EXPECT_EQ("test", headers.get_("content-encoding"));
-    EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, !with_trailers));
-    if (with_trailers) {
-      Buffer::OwnedImpl trailers_buffer;
-      EXPECT_CALL(encoder_callbacks_, addEncodedData(_, true))
-          .WillOnce(Invoke([&](Buffer::Instance& data, bool) { data_.move(data); }));
-      Http::TestResponseTrailerMapImpl trailers;
-      EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->encodeTrailers(trailers));
-    }
-    verifyCompressedData();
-    EXPECT_EQ(1U, stats_.counter("test.compressor.test.test.compressed").value());
+    doResponse(headers, true, with_trailers);
   }
 
   void doResponseNoCompression(Http::TestResponseHeaderMapImpl& headers) {
-    NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-    filter_->setDecoderFilterCallbacks(decoder_callbacks);
+    doResponse(headers, false, true);
+  }
+
+  void doResponse(Http::TestResponseHeaderMapImpl& headers, bool with_compression, bool with_trailers) {
     uint64_t content_length;
     ASSERT_TRUE(absl::SimpleAtoi(headers.get_("content-length"), &content_length));
     feedBuffer(content_length);
@@ -131,11 +118,26 @@ public:
     Http::MetadataMap metadata_map{{"metadata", "metadata"}};
     EXPECT_EQ(Http::FilterMetadataStatus::Continue, filter_->encodeMetadata(metadata_map));
     EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-    EXPECT_EQ("", headers.get_("content-encoding"));
-    EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, false));
-    Http::TestResponseTrailerMapImpl trailers;
-    EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->encodeTrailers(trailers));
-    EXPECT_EQ(1, stats_.counter("test.compressor.test.test.not_compressed").value());
+
+    if (with_compression) {
+      EXPECT_EQ("", headers.get_("content-length"));
+      EXPECT_EQ("test", headers.get_("content-encoding"));
+      EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, !with_trailers));
+      if (with_trailers) {
+        EXPECT_CALL(encoder_callbacks_, addEncodedData(_, true))
+            .WillOnce(Invoke([&](Buffer::Instance& data, bool) { data_.move(data); }));
+        Http::TestResponseTrailerMapImpl trailers;
+        EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->encodeTrailers(trailers));
+      }
+      verifyCompressedData();
+      EXPECT_EQ(1U, stats_.counter("test.compressor.test.test.compressed").value());
+    } else {
+      EXPECT_EQ("", headers.get_("content-encoding"));
+      EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, false));
+      Http::TestResponseTrailerMapImpl trailers;
+      EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->encodeTrailers(trailers));
+      EXPECT_EQ(1U, stats_.counter("test.compressor.test.test.not_compressed").value());
+    }
   }
 
   TestCompressorFactory* compressor_factory_;
@@ -195,15 +197,6 @@ TEST_F(CompressorFilterTest, AcceptanceTestEncodingWithTrailers) {
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   compressor_factory_->setExpectedCompressCalls(2);
   doResponseCompression(headers, true);
-}
-
-// Verifies that compression is NOT skipped when cache-control header does NOT have no-transform
-// value.
-TEST_F(CompressorFilterTest, HasCacheControlNoTransformCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
-  Http::TestResponseHeaderMapImpl headers{
-      {":method", "get"}, {"content-length", "256"}, {"cache-control", "no-cache"}};
-  doResponseCompression(headers, false);
 }
 
 TEST_F(CompressorFilterTest, NoAcceptEncodingHeader) {
@@ -790,28 +783,23 @@ TEST_P(CompressWithEtagTest, CompressionIsDisabledOnEtag) {
 }
 
 class HasCacheControlNoTransformTest : public CompressorFilterTest,
-                             public testing::WithParamInterface<std::tuple<std::string, int>> {
+                             public testing::WithParamInterface<std::tuple<std::string, bool>> {
                              };
 
 INSTANTIATE_TEST_SUITE_P(HasCacheControlNoTransformTestSuite, HasCacheControlNoTransformTest,
-                         testing::Values(std::make_tuple("no-cache", 1),
-                                         std::make_tuple("no-transform", 0),
-                                         std::make_tuple("No-Transform", 0)));
+                         testing::Values(std::make_tuple("no-cache", true),
+                                         std::make_tuple("no-transform", false),
+                                         std::make_tuple("No-Transform", false)));
 
 TEST_P(HasCacheControlNoTransformTest, Validate) {
   std::string cache_control = std::get<0>(GetParam());
-  int compressed = std::get<1>(GetParam());
-
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  compressor_factory_->setExpectedCompressCalls(0);
+  bool is_compression_expected = std::get<1>(GetParam());
 
   doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"cache-control", cache_control}};
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-  EXPECT_EQ(compressed, stats_.counter("test.compressor.test.test.compressed").value());
-  EXPECT_EQ(compressed > 0, headers.has("vary"));
+  doResponse(headers, is_compression_expected, false);
+  EXPECT_EQ(is_compression_expected, headers.has("vary"));
 }
 
 class IsMinimumContentLengthTest : public CompressorFilterTest,
