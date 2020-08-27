@@ -203,15 +203,13 @@ TEST_F(CompressorFilterTest, NoAcceptEncodingHeader) {
   doRequest({{":method", "get"}, {}});
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   doResponseNoCompression(headers);
-  EXPECT_EQ(1, stats_.counter("test.compressor.test.test.no_accept_header").value());
+  EXPECT_EQ(1U, stats_.counter("test.compressor.test.test.no_accept_header").value());
   EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
 }
 
 TEST_F(CompressorFilterTest, CacheIdentityDecision) {
   // check if identity stat is increased twice (the second time via the cached path).
   compressor_factory_->setExpectedCompressCalls(0);
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   doRequest({{":method", "get"}, {"accept-encoding", "identity"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}};
@@ -224,8 +222,6 @@ TEST_F(CompressorFilterTest, CacheIdentityDecision) {
 TEST_F(CompressorFilterTest, CacheHeaderNotValidDecision) {
   // check if not_valid stat is increased twice (the second time via the cached path).
   compressor_factory_->setExpectedCompressCalls(0);
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   doRequest({{":method", "get"}, {"accept-encoding", "test;q=invalid"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}};
