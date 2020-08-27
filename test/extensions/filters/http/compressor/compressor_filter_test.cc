@@ -444,16 +444,13 @@ TEST(MultipleFiltersTest, UseFirstRegisteredFilterWhenWildcard) {
 
 // Content-Encoding: upstream response is already encoded.
 TEST_F(CompressorFilterTest, ContentEncodingAlreadyEncoded) {
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
   doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl response_headers{
       {":method", "get"}, {"content-length", "256"}, {"content-encoding", "deflate, gzip"}};
-  feedBuffer(256);
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(response_headers, false));
   EXPECT_TRUE(response_headers.has("content-length"));
   EXPECT_FALSE(response_headers.has("transfer-encoding"));
-  EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, false));
+  EXPECT_EQ(1U, stats_.counter("test.compressor.test.test.not_compressed").value());
 }
 
 // No compression when upstream response is empty.
