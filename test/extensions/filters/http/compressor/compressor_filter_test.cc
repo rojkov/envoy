@@ -73,6 +73,7 @@ public:
     config_ =
         std::make_shared<CompressorFilterConfig>(compressor, "test.", stats_, runtime_, std::move(compressor_factory));
     filter_ = std::make_unique<CompressorFilter>(config_);
+    filter_->setDecoderFilterCallbacks(decoder_callbacks_);
     filter_->setEncoderFilterCallbacks(encoder_callbacks_);
   }
 
@@ -91,13 +92,15 @@ public:
     data_.drain(data_len);
   }
 
-  void doRequest(Http::TestRequestHeaderMapImpl&& headers, bool end_stream) {
-    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, end_stream));
+  void doRequest(Http::TestRequestHeaderMapImpl&& headers) {
+    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(headers, false));
+    Buffer::OwnedImpl data("hello");
+    EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->decodeData(data, false));
+    Http::TestRequestTrailerMapImpl trailers;
+    EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->decodeTrailers(trailers));
   }
 
   void doResponseCompression(Http::TestResponseHeaderMapImpl& headers, bool with_trailers) {
-    NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-    filter_->setDecoderFilterCallbacks(decoder_callbacks);
     uint64_t content_length;
     ASSERT_TRUE(absl::SimpleAtoi(headers.get_("content-length"), &content_length));
     feedBuffer(content_length);
@@ -113,7 +116,6 @@ public:
       EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->encodeTrailers(trailers));
     }
     verifyCompressedData();
-    drainBuffer();
     EXPECT_EQ(1U, stats_.counter("test.compressor.test.test.compressed").value());
   }
 
@@ -143,6 +145,7 @@ public:
   std::string expected_str_;
   Stats::TestUtil::TestStore stats_;
   NiceMock<Runtime::MockLoader> runtime_;
+  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks_;
   NiceMock<Http::MockStreamEncoderFilterCallbacks> encoder_callbacks_;
 };
 
@@ -165,7 +168,7 @@ TEST_F(CompressorFilterTest, DecodeHeadersWithRuntimeDisabled) {
   EXPECT_CALL(runtime_.snapshot_, getBoolean("foo_key", true))
       .Times(2)
       .WillRepeatedly(Return(false));
-  doRequest({{":method", "get"}, {"accept-encoding", "deflate, test"}}, false);
+  doRequest({{":method", "get"}, {"accept-encoding", "deflate, test"}});
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   doResponseNoCompression(headers);
   EXPECT_FALSE(headers.has("vary"));
@@ -181,47 +184,30 @@ TEST_F(CompressorFilterTest, DefaultConfigValues) {
 
 // Acceptance Testing with default configuration.
 TEST_F(CompressorFilterTest, AcceptanceTestEncoding) {
-  doRequest({{":method", "get"}, {"accept-encoding", "deflate, test"}}, false);
-  Buffer::OwnedImpl data("hello");
-  EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->decodeData(data, false));
-  Http::TestRequestTrailerMapImpl trailers;
-  EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->decodeTrailers(trailers));
+  doRequest({{":method", "get"}, {"accept-encoding", "deflate, test"}});
 
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   doResponseCompression(headers, false);
 }
 
 TEST_F(CompressorFilterTest, AcceptanceTestEncodingWithTrailers) {
-  doRequest({{":method", "get"}, {"accept-encoding", "deflate, test"}}, false);
-  Buffer::OwnedImpl data("hello");
-  EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->decodeData(data, false));
-  Http::TestRequestTrailerMapImpl trailers;
-  EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->decodeTrailers(trailers));
+  doRequest({{":method", "get"}, {"accept-encoding", "deflate, test"}});
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   compressor_factory_->setExpectedCompressCalls(2);
   doResponseCompression(headers, true);
 }
 
-// Verifies that compression is skipped when cache-control header has no-transform value.
-TEST_F(CompressorFilterTest, HasCacheControlNoTransformNoCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test;q=1, deflate"}}, true);
-  Http::TestResponseHeaderMapImpl headers{
-      {":method", "get"}, {"content-length", "256"}, {"cache-control", "no-transform"}};
-  doResponseNoCompression(headers);
-  EXPECT_FALSE(headers.has("vary"));
-}
-
 // Verifies that compression is NOT skipped when cache-control header does NOT have no-transform
 // value.
 TEST_F(CompressorFilterTest, HasCacheControlNoTransformCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"cache-control", "no-cache"}};
   doResponseCompression(headers, false);
 }
 
 TEST_F(CompressorFilterTest, NoAcceptEncodingHeader) {
-  doRequest({{":method", "get"}, {}}, true);
+  doRequest({{":method", "get"}, {}});
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   doResponseNoCompression(headers);
   EXPECT_EQ(1, stats_.counter("test.compressor.test.test.no_accept_header").value());
@@ -233,7 +219,7 @@ TEST_F(CompressorFilterTest, CacheIdentityDecision) {
   compressor_factory_->setExpectedCompressCalls(0);
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "identity"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "identity"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
@@ -247,7 +233,7 @@ TEST_F(CompressorFilterTest, CacheHeaderNotValidDecision) {
   compressor_factory_->setExpectedCompressCalls(0);
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test;q=invalid"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test;q=invalid"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
@@ -292,7 +278,7 @@ TEST_P(AcceptEncodingTest, AcceptEncodingAllowsCompression) {
   int not_valid = std::get<4>(GetParam());
   int identity = std::get<5>(GetParam());
 
-  doRequest({{":method", "get"}, {"accept-encoding", accept_encoding}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", accept_encoding}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}};
   if (is_compression_expected) {
@@ -469,7 +455,7 @@ TEST(MultipleFiltersTest, UseFirstRegisteredFilterWhenWildcard) {
 
 // Verifies that compression is skipped when content-length header is NOT allowed.
 TEST_F(CompressorFilterTest, ContentLengthNoCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "10"}};
   doResponseNoCompression(headers);
   EXPECT_FALSE(headers.has("vary"));
@@ -488,7 +474,7 @@ TEST_F(CompressorFilterTest, ContentLengthCompression) {
   }
 }
 )EOF");
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "1000"}};
   doResponseCompression(headers, false);
 }
@@ -514,7 +500,7 @@ TEST_F(CompressorFilterTest, ContentTypeNoCompression) {
   }
     }
   )EOF");
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"content-type", "image/jpeg"}};
   doResponseNoCompression(headers);
@@ -525,7 +511,7 @@ TEST_F(CompressorFilterTest, ContentTypeNoCompression) {
 
 // Verifies that compression is NOT skipped when content-encoding header is allowed.
 TEST_F(CompressorFilterTest, ContentTypeCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{{":method", "get"},
                                           {"content-length", "256"},
                                           {"content-type", "application/json;charset=utf-8"}};
@@ -534,7 +520,7 @@ TEST_F(CompressorFilterTest, ContentTypeCompression) {
 
 // Tests compression when Transfer-Encoding header exists.
 TEST_F(CompressorFilterTest, TransferEncodingChunked) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"transfer-encoding", "chunked"}};
   doResponseCompression(headers, false);
@@ -543,7 +529,7 @@ TEST_F(CompressorFilterTest, TransferEncodingChunked) {
 // Tests compression when Transfer-Encoding header exists.
 TEST_F(CompressorFilterTest, AcceptanceTransferEncoding) {
 
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"transfer-encoding", "chunked, deflate"}};
   doResponseNoCompression(headers);
@@ -554,7 +540,7 @@ TEST_F(CompressorFilterTest, AcceptanceTransferEncoding) {
 TEST_F(CompressorFilterTest, ContentEncodingAlreadyEncoded) {
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl response_headers{
       {":method", "get"}, {"content-length", "256"}, {"content-encoding", "deflate, gzip"}};
   feedBuffer(256);
@@ -608,7 +594,7 @@ TEST_F(CompressorFilterTest, InsertVaryHeader) {
 TEST_F(CompressorFilterTest, NoVaryHeader) {
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
   doResponseCompression(headers, false);
   EXPECT_TRUE(headers.has("vary"));
@@ -619,7 +605,7 @@ TEST_F(CompressorFilterTest, NoVaryHeader) {
 TEST_F(CompressorFilterTest, VaryOtherValues) {
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"vary", "User-Agent, Cookie"}};
   doResponseCompression(headers, false);
@@ -631,7 +617,7 @@ TEST_F(CompressorFilterTest, VaryOtherValues) {
 TEST_F(CompressorFilterTest, VaryAlreadyHasAcceptEncoding) {
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"vary", "accept-encoding"}};
   doResponseCompression(headers, false);
@@ -732,7 +718,7 @@ TEST_P(IsContentTypeAllowedTest, IsContentTypeAllowed) {
     )EOF");
   }
 
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"content-type", content_type}};
   if (should_compress) {
@@ -757,7 +743,7 @@ TEST_P(CompressWithEtagTest, CompressionIsEnabledOnEtag) {
   std::string header_value = std::get<1>(GetParam());
   bool is_weak_etag = std::get<2>(GetParam());
 
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {header_name, header_value}};
   doResponseCompression(headers, false);
@@ -786,7 +772,7 @@ TEST_P(CompressWithEtagTest, CompressionIsDisabledOnEtag) {
 }
 )EOF");
 
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {header_name, header_value}};
   if (StringUtil::CaseInsensitiveCompare()("etag", header_name)) {
@@ -820,11 +806,12 @@ TEST_P(HasCacheControlNoTransformTest, Validate) {
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
   compressor_factory_->setExpectedCompressCalls(0);
 
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {"cache-control", cache_control}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
   EXPECT_EQ(compressed, stats_.counter("test.compressor.test.test.compressed").value());
+  EXPECT_EQ(compressed > 0, headers.has("vary"));
 }
 
 class IsMinimumContentLengthTest : public CompressorFilterTest,
@@ -862,7 +849,7 @@ TEST_P(IsMinimumContentLengthTest, Validate) {
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
   compressor_factory_->setExpectedCompressCalls(0);
 
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {header_name, header_value}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
@@ -893,7 +880,7 @@ TEST_P(IsTransferEncodingAllowedTest, Validate) {
   filter_->setDecoderFilterCallbacks(decoder_callbacks);
   compressor_factory_->setExpectedCompressCalls(0);
 
-  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}}, true);
+  doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}, {header_name, header_value}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
