@@ -111,6 +111,7 @@ public:
   void doResponse(Http::TestResponseHeaderMapImpl& headers, bool with_compression, bool with_trailers) {
     uint64_t content_length;
     if (!absl::SimpleAtoi(headers.get_("content-length"), &content_length)) {
+      ASSERT_TRUE(StringUtil::CaseInsensitiveCompare()(headers.get_("transfer-encoding"), "chunked"));
       // In case of chunked stream just feed the buffer with 1000 bytes.
       content_length = 1000;
     }
