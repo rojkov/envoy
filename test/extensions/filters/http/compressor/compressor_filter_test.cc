@@ -447,85 +447,21 @@ TEST_F(CompressorFilterTest, ContentEncodingAlreadyEncoded) {
   doRequest({{":method", "get"}, {"accept-encoding", "test"}});
   Http::TestResponseHeaderMapImpl response_headers{
       {":method", "get"}, {"content-length", "256"}, {"content-encoding", "deflate, gzip"}};
+  feedBuffer(256);
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(response_headers, false));
   EXPECT_TRUE(response_headers.has("content-length"));
   EXPECT_FALSE(response_headers.has("transfer-encoding"));
+  EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, false));
   EXPECT_EQ(1U, stats_.counter("test.compressor.test.test.not_compressed").value());
 }
 
 // No compression when upstream response is empty.
 TEST_F(CompressorFilterTest, EmptyResponse) {
-
   Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {":status", "204"}};
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, true));
   EXPECT_EQ("", headers.get_("content-length"));
   EXPECT_EQ("", headers.get_("content-encoding"));
   EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->encodeData(data_, true));
-}
-
-// Verifies insertVaryHeader function.
-TEST_F(CompressorFilterTest, InsertVaryHeader) {
-  {
-    Http::TestResponseHeaderMapImpl headers{
-      {"content-length", "256"}};
-    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-    EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-length", "256"}, {"vary", "Cookie"}};
-    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-    EXPECT_EQ("Cookie, Accept-Encoding", headers.get_("vary"));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-length", "256"}, {"vary", "accept-encoding"}};
-    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-    EXPECT_EQ("accept-encoding, Accept-Encoding", headers.get_("vary"));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-length", "256"}, {"vary", "Accept-Encoding, Cookie"}};
-    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-    EXPECT_EQ("Accept-Encoding, Cookie", headers.get_("vary"));
-  }
-  {
-    Http::TestResponseHeaderMapImpl headers = {{"content-length", "256"}, {"vary", "Accept-Encoding"}};
-    EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-    EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
-  }
-}
-
-// Filter should set Vary header value with `accept-encoding`.
-TEST_F(CompressorFilterTest, NoVaryHeader) {
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
-  Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "256"}};
-  doResponseCompression(headers, false);
-  EXPECT_TRUE(headers.has("vary"));
-  EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
-}
-
-// Filter should set Vary header value with `accept-encoding` and preserve other values.
-TEST_F(CompressorFilterTest, VaryOtherValues) {
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
-  Http::TestResponseHeaderMapImpl headers{
-      {":method", "get"}, {"content-length", "256"}, {"vary", "User-Agent, Cookie"}};
-  doResponseCompression(headers, false);
-  EXPECT_TRUE(headers.has("vary"));
-  EXPECT_EQ("User-Agent, Cookie, Accept-Encoding", headers.get_("vary"));
-}
-
-// Vary header should have only one `accept-encoding`value.
-TEST_F(CompressorFilterTest, VaryAlreadyHasAcceptEncoding) {
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
-  Http::TestResponseHeaderMapImpl headers{
-      {":method", "get"}, {"content-length", "256"}, {"vary", "accept-encoding"}};
-  doResponseCompression(headers, false);
-  EXPECT_TRUE(headers.has("vary"));
-  EXPECT_EQ("accept-encoding, Accept-Encoding", headers.get_("vary"));
 }
 
 // Verify removeAcceptEncoding header.
@@ -775,6 +711,30 @@ TEST_P(IsTransferEncodingAllowedTest, Validate) {
       {":method", "get"}, {"content-length", "256"}, {header_name, header_value}};
   doResponse(headers, is_compression_expected, false);
   EXPECT_EQ("Accept-Encoding", headers.get_("vary"));
+}
+
+class InsertVaryHeaderTest : public CompressorFilterTest,
+    public testing::WithParamInterface<std::tuple<std::string, std::string, std::string>> {};
+
+INSTANTIATE_TEST_SUITE_P(InsertVaryHeaderTestSuite, InsertVaryHeaderTest, testing::Values(
+        std::make_tuple("x-garbage", "Cookie", "Accept-Encoding"),
+        std::make_tuple("vary", "Cookie", "Cookie, Accept-Encoding"),
+        std::make_tuple("vary", "accept-encoding", "accept-encoding, Accept-Encoding"),
+        std::make_tuple("vary", "Accept-Encoding, Cookie", "Accept-Encoding, Cookie"),
+        std::make_tuple("vary", "User-Agent, Cookie", "User-Agent, Cookie, Accept-Encoding"),
+        std::make_tuple("vary", "Accept-Encoding", "Accept-Encoding")
+        ));
+
+TEST_P(InsertVaryHeaderTest, Validate) {
+  std::string header_name = std::get<0>(GetParam());
+  std::string header_value = std::get<1>(GetParam());
+  std::string expected = std::get<2>(GetParam());
+
+  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
+  Http::TestResponseHeaderMapImpl headers{
+      {":method", "get"}, {"content-length", "256"}, {header_name, header_value}};
+  doResponseCompression(headers, false);
+  EXPECT_EQ(expected, headers.get_("vary"));
 }
 
 } // namespace Compressor
