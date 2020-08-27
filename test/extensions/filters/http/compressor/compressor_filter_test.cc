@@ -270,11 +270,7 @@ TEST_P(AcceptEncodingTest, AcceptEncodingAllowsCompression) {
   doRequest({{":method", "get"}, {"accept-encoding", accept_encoding}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {"content-length", "256"}};
-  if (is_compression_expected) {
-    doResponseCompression(headers, false);
-  } else {
-    doResponseNoCompression(headers);
-  }
+  doResponse(headers, is_compression_expected, false);
   EXPECT_EQ(compressor_used, stats_.counter("test.compressor.test.test.header_compressor_used").value());
   EXPECT_EQ(wildcard, stats_.counter("test.compressor.test.test.header_wildcard").value());
   EXPECT_EQ(not_valid, stats_.counter("test.compressor.test.test.header_not_valid").value());
