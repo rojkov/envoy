@@ -442,24 +442,6 @@ TEST(MultipleFiltersTest, UseFirstRegisteredFilterWhenWildcard) {
   EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_wildcard").value());
 }
 
-// Verifies that compression is NOT skipped when content-length header is allowed.
-TEST_F(CompressorFilterTest, ContentLengthCompression) {
-  setUpFilter(R"EOF(
-{
-  "content_length": 500,
-  "compressor_library": {
-     "name": "test",
-     "typed_config": {
-       "@type": "type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip"
-     }
-  }
-}
-)EOF");
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
-  Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "1000"}};
-  doResponseCompression(headers, false);
-}
-
 // Verifies that compression is skipped when content-type header is NOT allowed.
 TEST_F(CompressorFilterTest, ContentTypeNoCompression) {
   setUpFilter(R"EOF(
