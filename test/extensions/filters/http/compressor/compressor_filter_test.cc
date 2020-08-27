@@ -110,7 +110,10 @@ public:
 
   void doResponse(Http::TestResponseHeaderMapImpl& headers, bool with_compression, bool with_trailers) {
     uint64_t content_length;
-    ASSERT_TRUE(absl::SimpleAtoi(headers.get_("content-length"), &content_length));
+    if (!absl::SimpleAtoi(headers.get_("content-length"), &content_length)) {
+      // In case of chunked stream just feed the buffer with 1000 bytes.
+      content_length = 1000;
+    }
     feedBuffer(content_length);
     Http::TestResponseHeaderMapImpl continue_headers;
     EXPECT_EQ(Http::FilterHeadersStatus::Continue,
@@ -436,14 +439,6 @@ TEST(MultipleFiltersTest, UseFirstRegisteredFilterWhenWildcard) {
   EXPECT_EQ(0, stats.counter("test2.compressor.test.test.compressed").value());
   EXPECT_EQ(1, stats.counter("test1.compressor.test.test.header_wildcard").value());
   EXPECT_EQ(1, stats.counter("test2.compressor.test.test.header_wildcard").value());
-}
-
-// Verifies that compression is skipped when content-length header is NOT allowed.
-TEST_F(CompressorFilterTest, ContentLengthNoCompression) {
-  doRequest({{":method", "get"}, {"accept-encoding", "test"}});
-  Http::TestResponseHeaderMapImpl headers{{":method", "get"}, {"content-length", "10"}};
-  doResponseNoCompression(headers);
-  EXPECT_FALSE(headers.has("vary"));
 }
 
 // Verifies that compression is NOT skipped when content-length header is allowed.
@@ -795,24 +790,24 @@ TEST_P(HasCacheControlNoTransformTest, Validate) {
 }
 
 class IsMinimumContentLengthTest : public CompressorFilterTest,
-                             public testing::WithParamInterface<std::tuple<std::string, std::string, std::string, int>> {
+                             public testing::WithParamInterface<std::tuple<std::string, std::string, std::string, bool>> {
                              };
 
 INSTANTIATE_TEST_SUITE_P(IsMinimumContentLengthTestSuite, IsMinimumContentLengthTest,
-                         testing::Values(std::make_tuple("content-length", "31", "", 1),
-                                         std::make_tuple("content-length", "29", "", 0),
-                                         std::make_tuple("transfer-encoding", "chunked", "", 1),
-                                         std::make_tuple("transfer-encoding", "Chunked", "", 1),
-                                         std::make_tuple("transfer-encoding", "chunked", "\"content_length\": 500,", 1),
-                                         std::make_tuple("content-length", "501", "\"content_length\": 500,", 1),
-                                         std::make_tuple("content-length", "499", "\"content_length\": 500,", 0)
-                                         ));
+                         testing::Values(
+                             std::make_tuple("content-length", "31", "", true),
+                             std::make_tuple("content-length", "29", "", false),
+                             std::make_tuple("transfer-encoding", "chunked", "", true),
+                             std::make_tuple("transfer-encoding", "Chunked", "", true),
+                             std::make_tuple("transfer-encoding", "chunked", "\"content_length\": 500,", true),
+                             std::make_tuple("content-length", "501", "\"content_length\": 500,",  true),
+                             std::make_tuple("content-length", "499", "\"content_length\": 500,",  false)));
 
 TEST_P(IsMinimumContentLengthTest, Validate) {
   std::string header_name = std::get<0>(GetParam());
   std::string header_value = std::get<1>(GetParam());
   std::string content_length_config = std::get<2>(GetParam());
-  int compressed = std::get<3>(GetParam());
+  bool is_compression_expected = std::get<3>(GetParam());
 
   setUpFilter(fmt::format(R"EOF(
 {{
@@ -825,15 +820,12 @@ TEST_P(IsMinimumContentLengthTest, Validate) {
   }}
 }}
 )EOF", content_length_config));
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  filter_->setDecoderFilterCallbacks(decoder_callbacks);
-  compressor_factory_->setExpectedCompressCalls(0);
 
   doRequest({{":method", "get"}, {"accept-encoding", "test, deflate"}});
   Http::TestResponseHeaderMapImpl headers{
       {":method", "get"}, {header_name, header_value}};
-  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->encodeHeaders(headers, false));
-  EXPECT_EQ(compressed, stats_.counter("test.compressor.test.test.compressed").value());
+  doResponse(headers, is_compression_expected, false);
+  EXPECT_EQ(is_compression_expected, headers.has("vary"));
 }
 
 class IsTransferEncodingAllowedTest : public CompressorFilterTest,
