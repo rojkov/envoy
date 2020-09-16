@@ -178,6 +178,7 @@ def envoy_dependencies(skip_targets = []):
     _com_github_google_libprotobuf_mutator()
     _com_github_gperftools_gperftools()
     _com_github_grpc_grpc()
+    _com_github_intel_qatzip()
     _com_github_jbeder_yaml_cpp()
     _com_github_libevent_libevent()
     _com_github_luajit_luajit()
