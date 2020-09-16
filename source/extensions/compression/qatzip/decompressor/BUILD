@@ -32,6 +32,6 @@ envoy_cc_extension(
         ":decompressor_lib",
         "//source/common/http:headers_lib",
         "//source/extensions/compression/common/decompressor:decompressor_factory_base_lib",
-        "@envoy_api//envoy/extensions/compression/qatzip/decompressor/v3:pkg_cc_proto",
+        "@envoy_api//envoy/extensions/compression/brotli/decompressor/v3:pkg_cc_proto",
     ],
 )

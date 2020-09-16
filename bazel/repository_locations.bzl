@@ -354,6 +354,16 @@ DEPENDENCY_REPOSITORIES_SPEC = dict(
         use_category = ["dataplane"],
         cpe = "N/A",
     ),
+    com_github_intel_qatzip = dict(
+        project_name = "qatzip",
+        project_url = "https://github.com/intel/QATzip",
+        version = "1.0.1",
+        sha256 = "461c155fa9153c217c5dc7d7cf44cb31106ab6e5754a7ee5fbd8121b4c6cdd4b",
+        strip_prefix = "QATzip-1.0.1",
+        urls = ["https://github.com/intel/QATzip/archive/v{version}.tar.gz"],
+        use_category = ["dataplane"],
+        cpe = "N/A",
+    ),
     com_github_jbeder_yaml_cpp = dict(
         project_name = "yaml-cpp",
         project_url = "https://github.com/jbeder/yaml-cpp",

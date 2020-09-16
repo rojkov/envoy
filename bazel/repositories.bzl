@@ -346,6 +346,16 @@ def _com_github_google_libprotobuf_mutator():
         build_file = "@envoy//bazel/external:libprotobuf_mutator.BUILD",
     )
 
+def _com_github_intel_qatzip():
+    _repository_impl(
+        name = "com_github_intel_qatzip",
+        build_file = "@envoy//bazel/external:qatzip.BUILD",
+    )
+    native.bind(
+        name = "qatzip",
+        actual = "@com_github_intel_qatzip//:qatzip",
+    )
+
 def _com_github_jbeder_yaml_cpp():
     _repository_impl(
         name = "com_github_jbeder_yaml_cpp",
