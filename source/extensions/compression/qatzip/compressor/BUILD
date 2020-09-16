@@ -13,7 +13,7 @@ envoy_cc_library(
     name = "compressor_lib",
     srcs = ["qatzip_compressor_impl.cc"],
     hdrs = ["qatzip_compressor_impl.h"],
-    external_deps = ["brotlienc"],
+    external_deps = ["qatzip"],
     deps = [
         "//include/envoy/compression/compressor:compressor_interface",
         "//source/common/buffer:buffer_lib",
@@ -30,6 +30,6 @@ envoy_cc_extension(
         ":compressor_lib",
         "//source/common/http:headers_lib",
         "//source/extensions/compression/common/compressor:compressor_factory_base_lib",
-        "@envoy_api//envoy/extensions/compression/brotli/compressor/v3:pkg_cc_proto",
+        "@envoy_api//envoy/extensions/compression/qatzip/compressor/v3:pkg_cc_proto",
     ],
 )

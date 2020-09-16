@@ -1,22 +1,22 @@
 syntax = "proto3";
 
-package envoy.extensions.compression.brotli.compressor.v3;
+package envoy.extensions.compression.qatzip.compressor.v3;
 
 import "google/protobuf/wrappers.proto";
 
 import "udpa/annotations/status.proto";
 import "validate/validate.proto";
 
-option java_package = "io.envoyproxy.envoy.extensions.compression.brotli.compressor.v3";
-option java_outer_classname = "BrotliProto";
+option java_package = "io.envoyproxy.envoy.extensions.compression.qatzip.compressor.v3";
+option java_outer_classname = "QatzipProto";
 option java_multiple_files = true;
 option (udpa.annotations.file_status).package_version_status = ACTIVE;
 
-// [#protodoc-title: Brotli Compressor]
-// [#extension: envoy.compression.brotli.compressor]
+// [#protodoc-title: QATzip Compressor]
+// [#extension: envoy.compression.qatzip.compressor]
 
 // [#next-free-field: 7]
-message Brotli {
+message Qatzip {
   enum EncoderMode {
     DEFAULT = 0;
     GENERIC = 1;
