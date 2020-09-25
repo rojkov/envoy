@@ -2,11 +2,7 @@
 
 #include <memory>
 
-#include "envoy/common/exception.h"
-
 #include "common/common/assert.h"
-
-#include "absl/container/fixed_array.h"
 
 namespace Envoy {
 namespace Extensions {
