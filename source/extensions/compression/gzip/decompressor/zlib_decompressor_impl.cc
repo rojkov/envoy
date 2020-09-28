@@ -31,7 +31,6 @@ ZlibDecompressorImpl::ZlibDecompressorImpl(Stats::Scope& scope, const std::strin
   zstream_ptr_->zfree = Z_NULL;
   zstream_ptr_->opaque = Z_NULL;
   zstream_ptr_->avail_out = chunk_size_;
-  zstream_ptr_->next_out = chunk_char_ptr_.get();
 }
 
 void ZlibDecompressorImpl::init(int64_t window_bits) {
@@ -43,6 +42,11 @@ void ZlibDecompressorImpl::init(int64_t window_bits) {
 
 void ZlibDecompressorImpl::decompress(const Buffer::Instance& input_buffer,
                                       Buffer::Instance& output_buffer) {
+  uint64_t reserved_slices_num = output_buffer.reserve(chunk_size_, &slice_, 1);
+  ASSERT(reserved_slices_num == 1);
+  ASSERT(slice_.len_ >= chunk_size_);
+  zstream_ptr_->next_out = static_cast<Bytef*>(slice_.mem_);
+
   for (const Buffer::RawSlice& input_slice : input_buffer.getRawSlices()) {
     zstream_ptr_->avail_in = input_slice.len_;
     zstream_ptr_->next_in = static_cast<Bytef*>(input_slice.mem_);

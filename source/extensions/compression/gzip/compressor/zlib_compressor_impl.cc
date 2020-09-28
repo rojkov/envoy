@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "common/buffer/buffer_impl.h"
 #include "common/common/assert.h"
 
 namespace Envoy {
@@ -21,7 +22,6 @@ ZlibCompressorImpl::ZlibCompressorImpl(uint64_t chunk_size)
   zstream_ptr_->zfree = Z_NULL;
   zstream_ptr_->opaque = Z_NULL;
   zstream_ptr_->avail_out = chunk_size_;
-  zstream_ptr_->next_out = chunk_char_ptr_.get();
 }
 
 void ZlibCompressorImpl::init(CompressionLevel comp_level, CompressionStrategy comp_strategy,
@@ -35,6 +35,12 @@ void ZlibCompressorImpl::init(CompressionLevel comp_level, CompressionStrategy c
 
 void ZlibCompressorImpl::compress(Buffer::Instance& buffer,
                                   Envoy::Compression::Compressor::State state) {
+  Buffer::OwnedImpl accumulation_buffer;
+  uint64_t reserved_slices_num = accumulation_buffer.reserve(chunk_size_, &slice_, 1);
+  ASSERT(reserved_slices_num == 1);
+  ASSERT(slice_.len_ >= chunk_size_);
+  zstream_ptr_->next_out = static_cast<Bytef*>(slice_.mem_);
+
   for (const Buffer::RawSlice& input_slice : buffer.getRawSlices()) {
     zstream_ptr_->avail_in = input_slice.len_;
     zstream_ptr_->next_in = static_cast<Bytef*>(input_slice.mem_);
@@ -42,11 +48,15 @@ void ZlibCompressorImpl::compress(Buffer::Instance& buffer,
     // without flushing it out. However, if the data output is greater or equal to the allocated
     // chunk size, process() outputs it to the end of the buffer. This is fine, since at the next
     // step, the buffer is drained from the beginning of the buffer by the size of input.
-    process(buffer, Z_NO_FLUSH);
+    process(accumulation_buffer, Z_NO_FLUSH);
     buffer.drain(input_slice.len_);
   }
 
-  process(buffer, state == Envoy::Compression::Compressor::State::Finish ? Z_FINISH : Z_SYNC_FLUSH);
+  process(accumulation_buffer,
+          state == Envoy::Compression::Compressor::State::Finish ? Z_FINISH : Z_SYNC_FLUSH);
+
+  ASSERT(buffer.length() == 0);
+  buffer.move(accumulation_buffer);
 }
 
 bool ZlibCompressorImpl::deflateNext(int64_t flush_state) {
