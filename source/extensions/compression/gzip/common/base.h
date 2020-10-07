@@ -35,6 +35,7 @@ protected:
 
   Buffer::RawSlice slice_;
   const std::unique_ptr<z_stream, std::function<void(z_stream*)>> zstream_ptr_;
+  std::unique_ptr<unsigned char[]> preallocated_;
 };
 
 } // namespace Zlib

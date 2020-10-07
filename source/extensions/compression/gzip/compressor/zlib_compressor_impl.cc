@@ -11,6 +11,33 @@ namespace Compression {
 namespace Gzip {
 namespace Compressor {
 
+namespace {
+
+void* zalloc(void* c, unsigned int items, unsigned int size) {
+  ZlibCompressorImpl* compressor = static_cast<ZlibCompressorImpl*>(c);
+  uint64_t alloc = items * size;
+  void *p;
+  //printf("ALLOCATE %d * %d = %d\n", items, size, items*size);
+
+  if (items == 1 && alloc % 512 != 0 && alloc < 8192) {
+    alloc = 8192;
+  }
+
+  if (alloc <= compressor->allocated_) {
+    p = compressor->free_mem_;
+    compressor->free_mem_ += alloc;
+    compressor->allocated_ -= alloc;
+    return p;
+  }
+
+  ASSERT(false);
+  return nullptr;
+}
+
+void zfree(void*, void*) {}
+
+} // namespace
+
 ZlibCompressorImpl::ZlibCompressorImpl() : ZlibCompressorImpl(4096) {}
 
 ZlibCompressorImpl::ZlibCompressorImpl(uint64_t chunk_size)
@@ -18,9 +45,12 @@ ZlibCompressorImpl::ZlibCompressorImpl(uint64_t chunk_size)
         deflateEnd(z);
         delete z;
       }) {
-  zstream_ptr_->zalloc = Z_NULL;
-  zstream_ptr_->zfree = Z_NULL;
-  zstream_ptr_->opaque = Z_NULL;
+  preallocated_ = std::make_unique<unsigned char[]>(65536*4);
+  free_mem_ = preallocated_.get();
+  allocated_ = 65536*4;
+  zstream_ptr_->zalloc = zalloc;
+  zstream_ptr_->zfree = zfree;
+  zstream_ptr_->opaque = this;
   zstream_ptr_->avail_out = chunk_size_;
 }
 

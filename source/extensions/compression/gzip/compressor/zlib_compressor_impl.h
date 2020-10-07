@@ -85,6 +85,9 @@ public:
   // Compression::Compressor::Compressor
   void compress(Buffer::Instance& buffer, Envoy::Compression::Compressor::State state) override;
 
+  unsigned char* free_mem_;
+  uint64_t allocated_;
+
 private:
   bool deflateNext(int64_t flush_state);
   void process(Buffer::Instance& output_buffer, int64_t flush_state);
