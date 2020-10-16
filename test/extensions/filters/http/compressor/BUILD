@@ -1,5 +1,7 @@
 load(
     "//bazel:envoy_build_system.bzl",
+    "envoy_benchmark_test",
+    "envoy_cc_benchmark_binary",
     "envoy_package",
     "envoy_proto_library",
 )
@@ -19,8 +21,10 @@ envoy_extension_cc_test(
     ],
     extension_name = "envoy.filters.http.compressor",
     deps = [
+        "//source/extensions/compression/gzip/compressor:config",
         "//source/extensions/filters/http/compressor:compressor_filter_lib",
         "//test/mocks/compression/compressor:compressor_mocks",
+        "//test/mocks/http:http_mocks",
         "//test/mocks/runtime:runtime_mocks",
         "//test/test_common:utility_lib",
     ],
@@ -60,4 +64,32 @@ envoy_extension_cc_test(
         "//test/mocks/server:factory_context_mocks",
         "//test/test_common:utility_lib",
     ],
+)
+
+envoy_cc_benchmark_binary(
+    name = "compressor_filter_speed_test",
+    srcs = ["compressor_filter_speed_test.cc"],
+    external_deps = [
+        "benchmark",
+        "googletest",
+    ],
+    deps = [
+        "//include/envoy/compression/compressor:compressor_factory_interface",
+        "//source/common/protobuf:utility_lib",
+        "//source/extensions/compression/gzip/compressor:compressor_lib",
+        "//source/extensions/filters/http/compressor:compressor_filter_lib",
+        "//test/mocks/http:http_mocks",
+        "//test/mocks/protobuf:protobuf_mocks",
+        "//test/mocks/runtime:runtime_mocks",
+        "//test/test_common:printers_lib",
+        "//test/test_common:utility_lib",
+        "@envoy_api//envoy/extensions/filters/http/compressor/v3:pkg_cc_proto",
+    ],
+)
+
+envoy_benchmark_test(
+    name = "compressor_filter_speed_test_benchmark_test",
+    benchmark_binary = "compressor_filter_speed_test",
+    # TODO(envoyproxy/windows-dev): diagnose clang-cl build test failure
+    tags = ["fails_on_windows"],
 )
