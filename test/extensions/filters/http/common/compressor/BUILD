@@ -52,3 +52,26 @@ envoy_benchmark_test(
     # TODO(envoyproxy/windows-dev): diagnose clang-cl build test failure
     tags = ["fails_on_windows"],
 )
+
+envoy_cc_benchmark_binary(
+    name = "compressor_gzip_mini_bench",
+    srcs = ["compressor_gzip_mini_bench.cc"],
+    external_deps = [
+        "benchmark",
+        "googletest",
+    ],
+    deps = [
+        "//source/common/protobuf:utility_lib",
+        "//source/extensions/compression/gzip/compressor:compressor_lib",
+        "//source/extensions/filters/http/common/compressor:compressor_lib",
+        "//test/mocks/http:http_mocks",
+        "//test/mocks/protobuf:protobuf_mocks",
+        "//test/mocks/runtime:runtime_mocks",
+		"//test/mocks/local_info:local_info_mocks",
+		"//test/mocks/thread_local:thread_local_mocks",
+        "//test/test_common:printers_lib",
+        "//test/test_common:utility_lib",
+        "@envoy_api//envoy/extensions/filters/http/compressor/v3:pkg_cc_proto",
+    ],
+)
+
