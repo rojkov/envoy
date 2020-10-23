@@ -1,5 +1,11 @@
 #pragma once
 
+#ifndef ENVOY_PERF_ANNOTATION
+#define ENVOY_PERF_ANNOTATION
+#endif
+
+#include "common/common/perf_annotation.h"
+
 #include "envoy/compression/compressor/compressor.h"
 #include "envoy/extensions/filters/http/compressor/v3/compressor.pb.h"
 #include "envoy/stats/scope.h"
@@ -105,6 +111,7 @@ using CompressorFilterConfigSharedPtr = std::shared_ptr<CompressorFilterConfig>;
 class CompressorFilter : public Http::PassThroughFilter {
 public:
   explicit CompressorFilter(const CompressorFilterConfigSharedPtr config);
+  virtual ~CompressorFilter();
 
   // Http::StreamDecoderFilter
   Http::FilterHeadersStatus decodeHeaders(Http::RequestHeaderMap& headers,
@@ -148,6 +155,8 @@ private:
   Envoy::Compression::Compressor::CompressorPtr compressor_;
   const CompressorFilterConfigSharedPtr config_;
   std::unique_ptr<std::string> accept_encoding_;
+  PerfAnnotationContext* perf_context_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> creation_time_;
 };
 
 } // namespace Compressors

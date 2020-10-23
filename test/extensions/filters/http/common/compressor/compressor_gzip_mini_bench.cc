@@ -30,14 +30,14 @@ public:
       const std::string& compressor_name,
       Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionLevel level,
       Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionStrategy strategy,
-      int64_t window_bits, uint64_t memory_level)
+      int64_t window_bits, uint64_t memory_level, uint64_t chunk_size)
       : CompressorFilterConfig(compressor, stats_prefix + compressor_name + ".", scope, runtime,
                                compressor_name),
-        level_(level), strategy_(strategy), window_bits_(window_bits), memory_level_(memory_level) {
+        level_(level), strategy_(strategy), window_bits_(window_bits), memory_level_(memory_level), chunk_size_(chunk_size) {
   }
 
   Envoy::Compression::Compressor::CompressorPtr makeCompressor() override {
-    auto compressor = std::make_unique<Compression::Gzip::Compressor::ZlibCompressorImpl>();
+    auto compressor = std::make_unique<Compression::Gzip::Compressor::ZlibCompressorImpl>(chunk_size_);
     compressor->init(level_, strategy_, window_bits_, memory_level_);
     return compressor;
   }
@@ -46,12 +46,11 @@ public:
   const Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionStrategy strategy_;
   const int64_t window_bits_;
   const uint64_t memory_level_;
+  const uint64_t chunk_size_{4096};
 };
 
 using CompressionParams =
-    std::tuple<Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionLevel,
-               Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionStrategy, int64_t,
-               uint64_t>;
+    std::tuple<uint64_t, uint64_t, uint64_t>;
 
 static constexpr uint64_t TestDataSize = 122880;
 
@@ -109,12 +108,13 @@ static Result compressWith(std::vector<Buffer::OwnedImpl>&& chunks, CompressionP
   auto loader =  std::make_unique<Runtime::ScopedLoaderSingleton>(Runtime::LoaderPtr{new Runtime::LoaderImpl(dispatcher, tls, config0, local_info, store,generator, validation_visitor, *api)});
   envoy::extensions::filters::http::compressor::v3::Compressor compressor;
 
-  const auto level = std::get<0>(params);
-  const auto strategy = std::get<1>(params);
-  const auto window_bits = std::get<2>(params);
-  const auto memory_level = std::get<3>(params);
+  const auto level = Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionLevel::Speed;
+  const auto strategy = Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionStrategy::Standard;
+  const auto window_bits = 31;
+  const auto memory_level = 8;
+  const uint64_t compressor_chunk_size = std::get<0>(params);
   CompressorFilterConfigSharedPtr config = std::make_shared<MockCompressorFilterConfig>(
-      compressor, "test.", stats, runtime, "gzip", level, strategy, window_bits, memory_level);
+      compressor, "test.", stats, runtime, "gzip", level, strategy, window_bits, memory_level, compressor_chunk_size);
 
   ON_CALL(runtime.snapshot_, featureEnabled("test.filter_enabled", 100))
       .WillByDefault(Return(true));
@@ -162,70 +162,34 @@ static Result compressWith(std::vector<Buffer::OwnedImpl>&& chunks, CompressionP
 }
 
 static std::vector<CompressionParams> compression_params = {
-    // Speed + Standard + Big window + High mem level
-    {Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionLevel::Speed,
-     Compression::Gzip::Compressor::ZlibCompressorImpl::CompressionStrategy::Standard, 15, 8}
+    // compressor chunk size; slices, slice size
+    {4096, 1, 122880},
+    {4096, 7, 16384},
+    {4096, 7, 16320},
+    {16384, 7, 16384},
+    {16384, 7, 16320},
+    {4096, 15, 8192},
+    {4096, 30, 4096},
+    {4096, 120, 1024},
+    {4096, 9, 16384},
+    {4096, 9, 16320},
+    {16384, 9, 16384},
+    {16384, 9, 16320},
 };
 
 static void compressFull(benchmark::State& state) {
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
   const auto idx = state.range(0);
   const auto& params = compression_params[idx];
+  const uint64_t slice_nums = std::get<1>(params);
+  const uint64_t slice_size = std::get<2>(params);
 
   for (auto _ : state) {
-    std::vector<Buffer::OwnedImpl> chunks = generateChunks(1, 122880);
+    std::vector<Buffer::OwnedImpl> chunks = generateChunks(slice_nums, slice_size);
     compressWith(std::move(chunks), params, decoder_callbacks, state);
   }
 }
-BENCHMARK(compressFull)->DenseRange(0, 0, 1)->UseManualTime()->Unit(benchmark::kMillisecond);
-
-static void compressChunks16384(benchmark::State& state) {
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  const auto idx = state.range(0);
-  const auto& params = compression_params[idx];
-
-  for (auto _ : state) {
-    std::vector<Buffer::OwnedImpl> chunks = generateChunks(7, 16384);
-    compressWith(std::move(chunks), params, decoder_callbacks, state);
-  }
-}
-BENCHMARK(compressChunks16384)->DenseRange(0, 0, 1)->UseManualTime()->Unit(benchmark::kMillisecond);
-
-static void compressChunks8192(benchmark::State& state) {
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  const auto idx = state.range(0);
-  const auto& params = compression_params[idx];
-
-  for (auto _ : state) {
-    std::vector<Buffer::OwnedImpl> chunks = generateChunks(15, 8192);
-    compressWith(std::move(chunks), params, decoder_callbacks, state);
-  }
-}
-BENCHMARK(compressChunks8192)->DenseRange(0, 0, 1)->UseManualTime()->Unit(benchmark::kMillisecond);
-
-static void compressChunks4096(benchmark::State& state) {
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  const auto idx = state.range(0);
-  const auto& params = compression_params[idx];
-
-  for (auto _ : state) {
-    std::vector<Buffer::OwnedImpl> chunks = generateChunks(30, 4096);
-    compressWith(std::move(chunks), params, decoder_callbacks, state);
-  }
-}
-BENCHMARK(compressChunks4096)->DenseRange(0, 0, 1)->UseManualTime()->Unit(benchmark::kMillisecond);
-
-static void compressChunks1024(benchmark::State& state) {
-  NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks;
-  const auto idx = state.range(0);
-  const auto& params = compression_params[idx];
-
-  for (auto _ : state) {
-    std::vector<Buffer::OwnedImpl> chunks = generateChunks(120, 1024);
-    compressWith(std::move(chunks), params, decoder_callbacks, state);
-  }
-}
-BENCHMARK(compressChunks1024)->DenseRange(0, 0, 1)->UseManualTime()->Unit(benchmark::kMillisecond);
+BENCHMARK(compressFull)->DenseRange(0, 11, 1)->UseManualTime()->Unit(benchmark::kMillisecond);
 
 } // namespace Compressors
 } // namespace Common

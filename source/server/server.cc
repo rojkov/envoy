@@ -1,5 +1,11 @@
 #include "server/server.h"
 
+#ifndef ENVOY_PERF_ANNOTATION
+#define ENVOY_PERF_ANNOTATION
+#endif
+
+#include "common/common/perf_annotation.h"
+
 #include <csignal>
 #include <cstdint>
 #include <functional>
@@ -735,6 +741,8 @@ void InstanceImpl::terminate() {
 Runtime::Loader& InstanceImpl::runtime() { return Runtime::LoaderSingleton::get(); }
 
 void InstanceImpl::shutdown() {
+  auto perf_context = PerfAnnotationContext::getOrCreate();
+  perf_context->dump();
   ENVOY_LOG(info, "shutting down server instance");
   shutdown_ = true;
   restarter_.sendParentTerminateRequest();

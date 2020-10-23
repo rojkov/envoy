@@ -17,6 +17,7 @@ envoy_cc_library(
     deps = [
         "//include/envoy/compression/compressor:compressor_interface",
         "//source/common/buffer:buffer_lib",
+		"//source/common/common:perf_annotation_lib",
         "//source/common/common:assert_lib",
         "//source/extensions/compression/gzip/common:zlib_base_lib",
     ],

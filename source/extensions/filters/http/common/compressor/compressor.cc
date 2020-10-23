@@ -69,7 +69,13 @@ uint32_t CompressorFilterConfig::contentLengthUint(Protobuf::uint32 length) {
 }
 
 CompressorFilter::CompressorFilter(const CompressorFilterConfigSharedPtr config)
-    : skip_compression_{true}, config_(std::move(config)) {}
+    : skip_compression_{true}, config_(std::move(config)), perf_context_(PerfAnnotationContext::getOrCreate()),
+      creation_time_{std::chrono::high_resolution_clock::now()} {}
+
+CompressorFilter::~CompressorFilter() {
+  auto end = std::chrono::high_resolution_clock::now();
+  perf_context_->record(end - creation_time_, "filter", "filter lifetime");
+}
 
 Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::RequestHeaderMap& headers, bool) {
   const Http::HeaderEntry* accept_encoding = headers.getInline(accept_encoding_handle.handle());
@@ -140,12 +146,16 @@ Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::ResponseHeaderMa
 }
 
 Http::FilterDataStatus CompressorFilter::encodeData(Buffer::Instance& data, bool end_stream) {
+  std::chrono::time_point start = std::chrono::high_resolution_clock::now();
   if (!skip_compression_) {
     config_->stats().total_uncompressed_bytes_.add(data.length());
     compressor_->compress(data, end_stream ? Envoy::Compression::Compressor::State::Finish
                                            : Envoy::Compression::Compressor::State::Flush);
     config_->stats().total_compressed_bytes_.add(data.length());
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  //const auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+  perf_context_->record(end - start, "encodeData", "encodeData()");
   return Http::FilterDataStatus::Continue;
 }
 

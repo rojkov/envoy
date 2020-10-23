@@ -1,6 +1,13 @@
 #include "extensions/compression/gzip/compressor/zlib_compressor_impl.h"
 
+#ifndef ENVOY_PERF_ANNOTATION
+#define ENVOY_PERF_ANNOTATION
+#endif
+
+#include "common/common/perf_annotation.h"
+
 #include <memory>
+#include <iostream>
 
 #include "envoy/common/exception.h"
 
@@ -31,6 +38,7 @@ ZlibCompressorImpl::ZlibCompressorImpl(uint64_t chunk_size)
 void ZlibCompressorImpl::init(CompressionLevel comp_level, CompressionStrategy comp_strategy,
                               int64_t window_bits, uint64_t memory_level = 8) {
   ASSERT(initialized_ == false);
+  //std::cout << "wbits: " << window_bits << std::endl;
   const int result = deflateInit2(zstream_ptr_.get(), static_cast<int64_t>(comp_level), Z_DEFLATED,
                                   window_bits, memory_level, static_cast<uint64_t>(comp_strategy));
   RELEASE_ASSERT(result >= 0, "");
@@ -40,6 +48,7 @@ void ZlibCompressorImpl::init(CompressionLevel comp_level, CompressionStrategy c
 void ZlibCompressorImpl::compress(Buffer::Instance& buffer,
                                   Envoy::Compression::Compressor::State state) {
   for (const Buffer::RawSlice& input_slice : buffer.getRawSlices()) {
+    //std::cout << "Fragment size: " << input_slice.len_ << std::endl;
     zstream_ptr_->avail_in = input_slice.len_;
     zstream_ptr_->next_in = static_cast<Bytef*>(input_slice.mem_);
     // Z_NO_FLUSH tells the compressor to take the data in and compresses it as much as possible
@@ -54,7 +63,10 @@ void ZlibCompressorImpl::compress(Buffer::Instance& buffer,
 }
 
 bool ZlibCompressorImpl::deflateNext(int64_t flush_state) {
+  auto start = std::chrono::high_resolution_clock::now();
   const int result = deflate(zstream_ptr_.get(), flush_state);
+  auto end = std::chrono::high_resolution_clock::now();
+  PerfAnnotationContext::getOrCreate()->record(end - start, "deflate", "deflate()");
   switch (flush_state) {
   case Z_FINISH:
     if (result != Z_OK && result != Z_BUF_ERROR) {
