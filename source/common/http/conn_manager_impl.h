@@ -367,6 +367,7 @@ private:
     const std::string* decorated_operation_{nullptr};
     std::unique_ptr<RdsRouteConfigUpdateRequester> route_config_update_requester_;
     std::unique_ptr<Tracing::CustomTagMap> tracing_custom_tags_{nullptr};
+    std::chrono::time_point<std::chrono::high_resolution_clock> creation_time_;
 
     friend FilterManager;
   };

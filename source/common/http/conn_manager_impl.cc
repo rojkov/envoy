@@ -1,4 +1,9 @@
 #include "common/http/conn_manager_impl.h"
+#ifndef ENVOY_PERF_ANNOTATION
+#define ENVOY_PERF_ANNOTATION
+#endif
+
+#include "common/common/perf_annotation.h"
 
 #include <cstdint>
 #include <functional>
@@ -213,6 +218,8 @@ void ConnectionManagerImpl::doEndStream(ActiveStream& stream) {
   }
 
   checkForDeferredClose();
+  auto end = std::chrono::high_resolution_clock::now();
+  PerfAnnotationContext::getOrCreate()->record(end - stream.creation_time_, "ActiveStream", "ActiveStream lifetime");
 }
 
 void ConnectionManagerImpl::doDeferredStreamDestroy(ActiveStream& stream) {
@@ -574,7 +581,8 @@ ConnectionManagerImpl::ActiveStream::ActiveStream(ConnectionManagerImpl& connect
                       StreamInfo::FilterState::LifeSpan::Connection),
       request_response_timespan_(new Stats::HistogramCompletableTimespanImpl(
           connection_manager_.stats_.named_.downstream_rq_time_,
-          connection_manager_.timeSource())) {
+          connection_manager_.timeSource())),
+      creation_time_{std::chrono::high_resolution_clock::now()} {
   ASSERT(!connection_manager.config_.isRoutable() ||
              ((connection_manager.config_.routeConfigProvider() == nullptr &&
                connection_manager.config_.scopedRouteConfigProvider() != nullptr) ||
