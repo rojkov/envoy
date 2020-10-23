@@ -111,6 +111,9 @@ public:
    */
   static void clear();
 
+  std::chrono::time_point<std::chrono::high_resolution_clock> active_stream_end_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> active_tcpconnection_start_;
+
 private:
   /**
    * PerfAnnotationContext construction should be done via getOrCreate().

@@ -156,6 +156,7 @@ private:
                         public ScopeTrackedObject,
                         public FilterManagerCallbacks {
     ActiveStream(ConnectionManagerImpl& connection_manager, uint32_t buffer_limit);
+    virtual ~ActiveStream();
     void completeRequest();
 
     void chargeStats(const ResponseHeaderMap& headers);

@@ -218,8 +218,13 @@ void ConnectionManagerImpl::doEndStream(ActiveStream& stream) {
   }
 
   checkForDeferredClose();
+}
+
+ConnectionManagerImpl::ActiveStream::~ActiveStream() {
   auto end = std::chrono::high_resolution_clock::now();
-  PerfAnnotationContext::getOrCreate()->record(end - stream.creation_time_, "ActiveStream", "ActiveStream lifetime");
+  auto perf_ctx = PerfAnnotationContext::getOrCreate();
+  perf_ctx->record(end - creation_time_, "ActiveStream", "ActiveStream lifetime");
+  perf_ctx->active_stream_end_ = end;
 }
 
 void ConnectionManagerImpl::doDeferredStreamDestroy(ActiveStream& stream) {
@@ -583,6 +588,8 @@ ConnectionManagerImpl::ActiveStream::ActiveStream(ConnectionManagerImpl& connect
           connection_manager_.stats_.named_.downstream_rq_time_,
           connection_manager_.timeSource())),
       creation_time_{std::chrono::high_resolution_clock::now()} {
+  auto perf_ctx = PerfAnnotationContext::getOrCreate();
+  perf_ctx->record(creation_time_ - perf_ctx->active_tcpconnection_start_, "coonection_b_stream_b", "connection head");
   ASSERT(!connection_manager.config_.isRoutable() ||
              ((connection_manager.config_.routeConfigProvider() == nullptr &&
                connection_manager.config_.scopedRouteConfigProvider() != nullptr) ||

@@ -235,6 +235,7 @@ private:
     ActiveConnections& active_connections_;
     Network::ConnectionPtr connection_;
     Stats::TimespanPtr conn_length_;
+    std::chrono::time_point<std::chrono::high_resolution_clock> creation_time_;
   };
 
   /**

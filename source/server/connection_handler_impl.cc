@@ -1,4 +1,9 @@
 #include "server/connection_handler_impl.h"
+#ifndef ENVOY_PERF_ANNOTATION
+#define ENVOY_PERF_ANNOTATION
+#endif
+
+#include "common/common/perf_annotation.h"
 
 #include "envoy/event/dispatcher.h"
 #include "envoy/event/timer.h"
@@ -581,7 +586,9 @@ ConnectionHandlerImpl::ActiveTcpConnection::ActiveTcpConnection(
     : stream_info_(std::move(stream_info)), active_connections_(active_connections),
       connection_(std::move(new_connection)),
       conn_length_(new Stats::HistogramCompletableTimespanImpl(
-          active_connections_.listener_.stats_.downstream_cx_length_ms_, time_source)) {
+          active_connections_.listener_.stats_.downstream_cx_length_ms_, time_source)),
+      creation_time_{std::chrono::high_resolution_clock::now()} {
+   PerfAnnotationContext::getOrCreate()->active_tcpconnection_start_ = creation_time_;
   // We just universally set no delay on connections. Theoretically we might at some point want
   // to make this configurable.
   connection_->noDelay(true);
@@ -611,6 +618,11 @@ ConnectionHandlerImpl::ActiveTcpConnection::~ActiveTcpConnection() {
 
   // Active handler connections (not listener).
   listener.parent_.decNumConnections();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto perf_ctx = PerfAnnotationContext::getOrCreate();
+  perf_ctx->record(end - creation_time_, "ActiveTcpConnection", "ActiveTcpConnection lifetime");
+  RELEASE_ASSERT(end > perf_ctx->active_stream_end_, "Oops");
+  perf_ctx->record(end - perf_ctx->active_stream_end_, "stream_e_connection_e", "connection tail");
 }
 
 ConnectionHandlerImpl::ActiveTcpListenerOptRef
