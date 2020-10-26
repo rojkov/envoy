@@ -224,6 +224,7 @@ ConnectionManagerImpl::ActiveStream::~ActiveStream() {
   auto end = std::chrono::high_resolution_clock::now();
   auto perf_ctx = PerfAnnotationContext::getOrCreate();
   perf_ctx->record(end - creation_time_, "ActiveStream", "ActiveStream lifetime");
+  perf_ctx->record(end - perf_ctx->encode_data_end_, "encodeData_e_stream_e", "stream tail");
   perf_ctx->active_stream_end_ = end;
 }
 
@@ -590,6 +591,7 @@ ConnectionManagerImpl::ActiveStream::ActiveStream(ConnectionManagerImpl& connect
       creation_time_{std::chrono::high_resolution_clock::now()} {
   auto perf_ctx = PerfAnnotationContext::getOrCreate();
   perf_ctx->record(creation_time_ - perf_ctx->active_tcpconnection_start_, "coonection_b_stream_b", "connection head");
+  perf_ctx->active_stream_start_ = creation_time_;
   ASSERT(!connection_manager.config_.isRoutable() ||
              ((connection_manager.config_.routeConfigProvider() == nullptr &&
                connection_manager.config_.scopedRouteConfigProvider() != nullptr) ||

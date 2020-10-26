@@ -157,6 +157,8 @@ private:
   std::unique_ptr<std::string> accept_encoding_;
   PerfAnnotationContext* perf_context_;
   std::chrono::time_point<std::chrono::high_resolution_clock> creation_time_;
+  bool data_started_{false};
+  std::chrono::time_point<std::chrono::high_resolution_clock> encode_data_start_;
 };
 
 } // namespace Compressors

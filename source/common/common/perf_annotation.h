@@ -111,8 +111,10 @@ public:
    */
   static void clear();
 
+  std::chrono::time_point<std::chrono::high_resolution_clock> active_stream_start_;
   std::chrono::time_point<std::chrono::high_resolution_clock> active_stream_end_;
   std::chrono::time_point<std::chrono::high_resolution_clock> active_tcpconnection_start_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> encode_data_end_;
 
 private:
   /**

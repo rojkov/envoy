@@ -147,6 +147,11 @@ Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::ResponseHeaderMa
 
 Http::FilterDataStatus CompressorFilter::encodeData(Buffer::Instance& data, bool end_stream) {
   std::chrono::time_point start = std::chrono::high_resolution_clock::now();
+  if (!data_started_) {
+    perf_context_->record(start - perf_context_->active_stream_start_, "stream_b_encodeData_b", "stream head");
+    data_started_ = true;
+    encode_data_start_ = start;
+  }
   if (!skip_compression_) {
     config_->stats().total_uncompressed_bytes_.add(data.length());
     compressor_->compress(data, end_stream ? Envoy::Compression::Compressor::State::Finish
@@ -154,6 +159,10 @@ Http::FilterDataStatus CompressorFilter::encodeData(Buffer::Instance& data, bool
     config_->stats().total_compressed_bytes_.add(data.length());
   }
   auto end = std::chrono::high_resolution_clock::now();
+  if (end_stream) {
+    perf_context_->encode_data_end_ = end;
+  perf_context_->record(end - encode_data_start_, "encodeData_all", "encodeData() sum");
+  }
   //const auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
   perf_context_->record(end - start, "encodeData", "encodeData()");
   return Http::FilterDataStatus::Continue;
