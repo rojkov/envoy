@@ -18,6 +18,7 @@ envoy_cc_library(
         "//include/envoy/stats:stats_macros",
         "//include/envoy/stream_info:filter_state_interface",
         "//source/common/buffer:buffer_lib",
+        "//source/common/common:perf_annotation_lib",
         "//source/common/http:header_map_lib",
         "//source/common/protobuf",
         "//source/common/runtime:runtime_lib",

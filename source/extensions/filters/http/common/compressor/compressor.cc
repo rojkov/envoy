@@ -3,6 +3,9 @@
 #include "common/buffer/buffer_impl.h"
 #include "common/http/header_map_impl.h"
 
+#define ENVOY_PERF_ANNOTATION
+#include "common/common/perf_annotation.h"
+
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
@@ -72,6 +75,7 @@ CompressorFilter::CompressorFilter(const CompressorFilterConfigSharedPtr config)
     : skip_compression_{true}, config_(std::move(config)) {}
 
 Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::RequestHeaderMap& headers, bool) {
+  PERF_BEGIN("compress", "encoding");
   const Http::HeaderEntry* accept_encoding = headers.getInline(accept_encoding_handle.handle());
   if (accept_encoding != nullptr) {
     // Capture the value of the "Accept-Encoding" request header to use it later when making
@@ -111,6 +115,7 @@ void CompressorFilter::setDecoderFilterCallbacks(Http::StreamDecoderFilterCallba
 
 Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::ResponseHeaderMap& headers,
                                                           bool end_stream) {
+  PERF_END("compress", "encoding");
   const bool isEnabledAndContentLengthBigEnough =
       config_->enabled() && isMinimumContentLength(headers);
   const bool isCompressible = isEnabledAndContentLengthBigEnough && isContentTypeAllowed(headers) &&

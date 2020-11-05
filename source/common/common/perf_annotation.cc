@@ -32,6 +32,33 @@ void PerfOperation::record(absl::string_view category, absl::string_view descrip
 // because the constructor is non-trivial due to the contained unordered_map.
 PerfAnnotationContext::PerfAnnotationContext() = default;
 
+void PerfAnnotationContext::begin(absl::string_view category, absl::string_view description) {
+  CategoryDescription key = {std::string(category), std::string(description)};
+  {
+#if PERF_THREAD_SAFE
+    Thread::LockGuard lock(mutex_);
+#endif
+    RELEASE_ASSERT(!timestamps_map_.contains(key),
+                   "double perf measurement opening is disallowed!");
+    timestamps_map_.insert({key, currentTime()});
+  }
+}
+
+void PerfAnnotationContext::end(absl::string_view category, absl::string_view description) {
+  std::chrono::nanoseconds duration;
+  CategoryDescription key = {std::string(category), std::string(description)};
+  const MonotonicTime end_time = currentTime();
+  {
+#if PERF_THREAD_SAFE
+    Thread::LockGuard lock(mutex_);
+#endif
+    auto result = timestamps_map_.extract(key);
+    RELEASE_ASSERT(!result.empty(), "double perf measurement ending is disallowed!");
+    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - result.mapped());
+  }
+  record(duration, category, description);
+}
+
 void PerfAnnotationContext::record(std::chrono::nanoseconds duration, absl::string_view category,
                                    absl::string_view description) {
   CategoryDescription key = {std::string(category), std::string(description)};
@@ -143,6 +170,7 @@ void PerfAnnotationContext::clear() {
   Thread::LockGuard lock(context->mutex_);
 #endif
   context->duration_stats_map_.clear();
+  context->timestamps_map_.clear();
 }
 
 PerfAnnotationContext* PerfAnnotationContext::getOrCreate() {

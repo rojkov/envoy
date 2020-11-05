@@ -1,5 +1,8 @@
 #include "server/server.h"
 
+#define ENVOY_PERF_ANNOTATION
+#include "common/common/perf_annotation.h"
+
 #include <csignal>
 #include <cstdint>
 #include <functional>
@@ -739,6 +742,8 @@ void InstanceImpl::shutdown() {
   shutdown_ = true;
   restarter_.sendParentTerminateRequest();
   notifyCallbacksForStage(Stage::ShutdownExit, [this] { dispatcher_->exit(); });
+  auto perf_context = PerfAnnotationContext::getOrCreate();
+  perf_context->dump();
 }
 
 void InstanceImpl::shutdownAdmin() {
