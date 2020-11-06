@@ -184,7 +184,17 @@ private:
   };
 
   using DurationStatsMap = absl::node_hash_map<CategoryDescription, DurationStats, Hash>;
-  using TimestampsMap = absl::node_hash_map<CategoryDescription, MonotonicTime, Hash>;
+
+  struct ThreadAwareHash {
+    size_t operator()(const CategoryDescription& a) const {
+      size_t h = std::hash<std::string>{}(a.category);
+      h ^= std::hash<std::string>{}(a.description) + 0x9e3779b9 + (h << 6) + (h >> 2);
+      h ^= std::hash<std::thread::id>{}(std::this_thread::get_id()) + 0x9e3779b9 + (h << 6) + (h >> 2);
+      return h;
+    }
+  };
+
+  using TimestampsMap = absl::node_hash_map<CategoryDescription, MonotonicTime, ThreadAwareHash>;
 
   // Maps {category, description} to DurationStats.
 #if PERF_THREAD_SAFE
