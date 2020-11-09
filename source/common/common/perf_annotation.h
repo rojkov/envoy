@@ -170,6 +170,16 @@ private:
     }
   };
 
+  struct CategoryDescriptionThread {
+    std::string category;
+    std::string description;
+    std::thread::id threadId{};
+
+    bool operator==(const CategoryDescriptionThread& other) const {
+      return category == other.category && description == other.description && threadId == other.threadId;
+    }
+  };
+
   struct DurationStats {
     std::chrono::nanoseconds total_{0};
     std::chrono::nanoseconds min_{0};
@@ -186,15 +196,15 @@ private:
   using DurationStatsMap = absl::node_hash_map<CategoryDescription, DurationStats, Hash>;
 
   struct ThreadAwareHash {
-    size_t operator()(const CategoryDescription& a) const {
+    size_t operator()(const CategoryDescriptionThread& a) const {
       size_t h = std::hash<std::string>{}(a.category);
       h ^= std::hash<std::string>{}(a.description) + 0x9e3779b9 + (h << 6) + (h >> 2);
-      h ^= std::hash<std::thread::id>{}(std::this_thread::get_id()) + 0x9e3779b9 + (h << 6) + (h >> 2);
+      h ^= std::hash<std::thread::id>{}(a.threadId) + 0x9e3779b9 + (h << 6) + (h >> 2);
       return h;
     }
   };
 
-  using TimestampsMap = absl::node_hash_map<CategoryDescription, MonotonicTime, ThreadAwareHash>;
+  using TimestampsMap = absl::node_hash_map<CategoryDescriptionThread, MonotonicTime, ThreadAwareHash>;
 
   // Maps {category, description} to DurationStats.
 #if PERF_THREAD_SAFE

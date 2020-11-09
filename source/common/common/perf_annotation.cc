@@ -33,7 +33,7 @@ void PerfOperation::record(absl::string_view category, absl::string_view descrip
 PerfAnnotationContext::PerfAnnotationContext() = default;
 
 void PerfAnnotationContext::begin(absl::string_view category, absl::string_view description) {
-  CategoryDescription key = {std::string(category), std::string(description)};
+  CategoryDescriptionThread key = {std::string(category), std::string(description), std::this_thread::get_id()};
   {
 #if PERF_THREAD_SAFE
     Thread::LockGuard lock(mutex_);
@@ -46,7 +46,7 @@ void PerfAnnotationContext::begin(absl::string_view category, absl::string_view 
 
 void PerfAnnotationContext::end(absl::string_view category, absl::string_view description) {
   std::chrono::nanoseconds duration;
-  CategoryDescription key = {std::string(category), std::string(description)};
+  CategoryDescriptionThread key = {std::string(category), std::string(description), std::this_thread::get_id()};
   const MonotonicTime end_time = currentTime();
   {
 #if PERF_THREAD_SAFE
