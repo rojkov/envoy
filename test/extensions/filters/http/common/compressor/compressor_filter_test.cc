@@ -177,10 +177,10 @@ TEST_F(CompressorFilterTest, DecodeHeadersWithRuntimeDisabled) {
 
 // Default config values.
 TEST_F(CompressorFilterTest, DefaultConfigValues) {
-  EXPECT_EQ(30, config_->minimumLength());
-  EXPECT_EQ(false, config_->disableOnEtagHeader());
-  EXPECT_EQ(false, config_->removeAcceptEncodingHeader());
-  EXPECT_EQ(18, config_->contentTypeValues().size());
+  EXPECT_EQ(30, config_->responseDirectionConfig().minimumLength());
+  EXPECT_EQ(false, config_->responseDirectionConfig().disableOnEtagHeader());
+  EXPECT_EQ(false, config_->responseDirectionConfig().removeAcceptEncodingHeader());
+  EXPECT_EQ(18, config_->responseDirectionConfig().contentTypeValues().size());
 }
 
 // Acceptance Testing with default configuration.
