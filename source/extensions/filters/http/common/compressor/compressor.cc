@@ -46,6 +46,18 @@ struct CompressorRegistry : public StreamInfo::FilterState::Object {
 // Key to per stream CompressorRegistry objects.
 const std::string& compressorRegistryKey() { CONSTRUCT_ON_FIRST_USE(std::string, "compressors"); }
 
+Http::FilterDataStatus maybeCompress(const Compression::Compressor::CompressorPtr& compressor,
+                                     const CompressorStats& stats, Buffer::Instance& data,
+                                     bool end_stream) {
+  if (compressor != nullptr) {
+    stats.total_uncompressed_bytes_.add(data.length());
+    compressor->compress(data, end_stream ? Envoy::Compression::Compressor::State::Finish
+                                          : Envoy::Compression::Compressor::State::Flush);
+    stats.total_compressed_bytes_.add(data.length());
+  }
+  return Http::FilterDataStatus::Continue;
+}
+
 } // namespace
 
 CompressorFilterConfig::DirectionConfig::DirectionConfig(
@@ -150,14 +162,8 @@ Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::RequestHeaderMap
 }
 
 Http::FilterDataStatus CompressorFilter::decodeData(Buffer::Instance& data, bool end_stream) {
-  if (request_compressor_ != nullptr) {
-    const CompressorStats& stats = config_->requestDirectionConfig().stats();
-    stats.total_uncompressed_bytes_.add(data.length());
-    request_compressor_->compress(data, end_stream ? Envoy::Compression::Compressor::State::Finish
-                                                   : Envoy::Compression::Compressor::State::Flush);
-    stats.total_compressed_bytes_.add(data.length());
-  }
-  return Http::FilterDataStatus::Continue;
+  return maybeCompress(request_compressor_, config_->requestDirectionConfig().stats(), data,
+                       end_stream);
 }
 
 void CompressorFilter::setDecoderFilterCallbacks(Http::StreamDecoderFilterCallbacks& callbacks) {
@@ -215,14 +221,8 @@ Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::ResponseHeaderMa
 }
 
 Http::FilterDataStatus CompressorFilter::encodeData(Buffer::Instance& data, bool end_stream) {
-  if (response_compressor_ != nullptr) {
-    const CompressorStats& stats = config_->responseDirectionConfig().stats();
-    stats.total_uncompressed_bytes_.add(data.length());
-    response_compressor_->compress(data, end_stream ? Envoy::Compression::Compressor::State::Finish
-                                                    : Envoy::Compression::Compressor::State::Flush);
-    stats.total_compressed_bytes_.add(data.length());
-  }
-  return Http::FilterDataStatus::Continue;
+  return maybeCompress(response_compressor_, config_->responseDirectionConfig().stats(), data,
+                       end_stream);
 }
 
 Http::FilterTrailersStatus CompressorFilter::encodeTrailers(Http::ResponseTrailerMap&) {
