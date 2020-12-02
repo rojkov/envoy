@@ -153,9 +153,12 @@ Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::RequestHeaderMap
       !headers.getInline(request_content_encoding_handle.handle()) &&
       request_config.isMinimumContentLength(headers) &&
       request_config.isContentTypeAllowed(headers) && isTransferEncodingAllowed(headers)) {
-    request_compressor_ = config_->makeCompressor();
     headers.removeContentLength();
     headers.setInline(request_content_encoding_handle.handle(), config_->contentEncoding());
+    request_config.stats().compressed_.inc();
+    request_compressor_ = config_->makeCompressor();
+  } else {
+    request_config.stats().not_compressed_.inc();
   }
 
   return Http::FilterHeadersStatus::Continue;
