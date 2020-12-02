@@ -204,8 +204,7 @@ private:
   std::unique_ptr<EncodingDecision> chooseEncoding(const Http::ResponseHeaderMap& headers) const;
   bool shouldCompress(const EncodingDecision& decision) const;
 
-  bool skip_compression_;
-  Envoy::Compression::Compressor::CompressorPtr compressor_;
+  Envoy::Compression::Compressor::CompressorPtr response_compressor_;
   Envoy::Compression::Compressor::CompressorPtr request_compressor_;
   const CompressorFilterConfigSharedPtr config_;
   std::unique_ptr<std::string> accept_encoding_;

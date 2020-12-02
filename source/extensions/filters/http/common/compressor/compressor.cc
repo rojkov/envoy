@@ -121,7 +121,7 @@ CompressorFilterConfig::ResponseDirectionConfig::commonConfig(
 }
 
 CompressorFilter::CompressorFilter(const CompressorFilterConfigSharedPtr config)
-    : skip_compression_{true}, config_(std::move(config)) {}
+    : config_(std::move(config)) {}
 
 Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::RequestHeaderMap& headers, bool) {
   const Http::HeaderEntry* accept_encoding = headers.getInline(accept_encoding_handle.handle());
@@ -194,13 +194,12 @@ Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::ResponseHeaderMa
                               !headers.getInline(content_encoding_handle.handle());
   if (!end_stream && isEnabledAndContentLengthBigEnough && isAcceptEncodingAllowed(headers) &&
       isCompressible && isTransferEncodingAllowed(headers)) {
-    skip_compression_ = false;
     sanitizeEtagHeader(headers);
     headers.removeContentLength();
     headers.setInline(content_encoding_handle.handle(), config_->contentEncoding());
     config.stats().compressed_.inc();
     // Finally instantiate the compressor.
-    compressor_ = config_->makeCompressor();
+    response_compressor_ = config_->makeCompressor();
   } else {
     config.stats().not_compressed_.inc();
   }
@@ -216,20 +215,20 @@ Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::ResponseHeaderMa
 }
 
 Http::FilterDataStatus CompressorFilter::encodeData(Buffer::Instance& data, bool end_stream) {
-  if (!skip_compression_) {
+  if (response_compressor_ != nullptr) {
     const CompressorStats& stats = config_->responseDirectionConfig().stats();
     stats.total_uncompressed_bytes_.add(data.length());
-    compressor_->compress(data, end_stream ? Envoy::Compression::Compressor::State::Finish
-                                           : Envoy::Compression::Compressor::State::Flush);
+    response_compressor_->compress(data, end_stream ? Envoy::Compression::Compressor::State::Finish
+                                                    : Envoy::Compression::Compressor::State::Flush);
     stats.total_compressed_bytes_.add(data.length());
   }
   return Http::FilterDataStatus::Continue;
 }
 
 Http::FilterTrailersStatus CompressorFilter::encodeTrailers(Http::ResponseTrailerMap&) {
-  if (!skip_compression_) {
+  if (response_compressor_ != nullptr) {
     Buffer::OwnedImpl empty_buffer;
-    compressor_->compress(empty_buffer, Envoy::Compression::Compressor::State::Finish);
+    response_compressor_->compress(empty_buffer, Envoy::Compression::Compressor::State::Finish);
     config_->responseDirectionConfig().stats().total_compressed_bytes_.add(empty_buffer.length());
     encoder_callbacks_->addEncodedData(empty_buffer, true);
   }
