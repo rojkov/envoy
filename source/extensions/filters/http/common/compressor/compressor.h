@@ -18,12 +18,21 @@ namespace Common {
 namespace Compressors {
 
 /**
- * All compressor filter stats. @see stats_macros.h TODO: edit
- * "total_uncompressed_bytes" only includes bytes from requests that were marked for compression.
- * If the request was not marked for compression, the filter increments "not_compressed", but does
- * not add to "total_uncompressed_bytes". This way, the user can measure the memory performance of
- * the compression.
- *
+ * Compressor filter stats common for responses and requests. @see stats_macros.h
+ * "total_uncompressed_bytes" only includes bytes from requests or responses that were marked for
+ * compression. If the request (or response) was not marked for compression, the filter increments
+ *  "not_compressed", but does not add to "total_uncompressed_bytes". This way, the user can
+ *  measure the memory performance of the compression.
+ */
+#define COMMON_COMPRESSOR_STATS(COUNTER)                                                           \
+  COUNTER(compressed)                                                                              \
+  COUNTER(not_compressed)                                                                          \
+  COUNTER(total_uncompressed_bytes)                                                                \
+  COUNTER(total_compressed_bytes)                                                                  \
+  COUNTER(content_length_too_small)
+
+/**
+ * Compressor filter stats specific to responses only. @see stats_macros.h
  * "header_compressor_used" is a number of requests whose Accept-Encoding header explicitly stated
  * that the response body should be compressed with the encoding provided by this filter instance.
  *
@@ -33,13 +42,6 @@ namespace Compressors {
  * "header_gzip" is specific to the gzip filter and is deprecated since it duplicates
  * "header_compressor_used".
  */
-#define COMMON_COMPRESSOR_STATS(COUNTER)                                                           \
-  COUNTER(compressed)                                                                              \
-  COUNTER(not_compressed)                                                                          \
-  COUNTER(total_uncompressed_bytes)                                                                \
-  COUNTER(total_compressed_bytes)                                                                  \
-  COUNTER(content_length_too_small)
-
 #define RESPONSE_COMPRESSOR_STATS(COUNTER)                                                         \
   COUNTER(no_accept_header)                                                                        \
   COUNTER(header_identity)                                                                         \
@@ -51,7 +53,7 @@ namespace Compressors {
   COUNTER(not_compressed_etag)
 
 /**
- * Struct definition for compressor stats. @see stats_macros.h
+ * Struct definitions for compressor stats. @see stats_macros.h
  */
 struct CompressorStats {
   COMMON_COMPRESSOR_STATS(GENERATE_COUNTER_STRUCT)
