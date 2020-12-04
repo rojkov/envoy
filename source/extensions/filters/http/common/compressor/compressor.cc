@@ -16,14 +16,14 @@ Http::RegisterCustomInlineHeader<Http::CustomInlineHeaderRegistry::Type::Request
 Http::RegisterCustomInlineHeader<Http::CustomInlineHeaderRegistry::Type::ResponseHeaders>
     cache_control_handle(Http::CustomHeaders::get().CacheControl);
 Http::RegisterCustomInlineHeader<Http::CustomInlineHeaderRegistry::Type::ResponseHeaders>
-    content_encoding_handle(Http::CustomHeaders::get().ContentEncoding);
-Http::RegisterCustomInlineHeader<Http::CustomInlineHeaderRegistry::Type::ResponseHeaders>
     etag_handle(Http::CustomHeaders::get().Etag);
 Http::RegisterCustomInlineHeader<Http::CustomInlineHeaderRegistry::Type::ResponseHeaders>
     vary_handle(Http::CustomHeaders::get().Vary);
 
 Http::RegisterCustomInlineHeader<Http::CustomInlineHeaderRegistry::Type::RequestHeaders>
     request_content_encoding_handle(Http::CustomHeaders::get().ContentEncoding);
+Http::RegisterCustomInlineHeader<Http::CustomInlineHeaderRegistry::Type::ResponseHeaders>
+    response_content_encoding_handle(Http::CustomHeaders::get().ContentEncoding);
 
 // Default minimum length of an upstream response that allows compression.
 const uint64_t DefaultMinimumContentLength = 30;
@@ -135,7 +135,8 @@ CompressorFilterConfig::ResponseDirectionConfig::commonConfig(
 CompressorFilter::CompressorFilter(const CompressorFilterConfigSharedPtr config)
     : config_(std::move(config)) {}
 
-Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::RequestHeaderMap& headers, bool) {
+Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::RequestHeaderMap& headers,
+                                                          bool end_stream) {
   const Http::HeaderEntry* accept_encoding = headers.getInline(accept_encoding_handle.handle());
   if (accept_encoding != nullptr) {
     // Capture the value of the "Accept-Encoding" request header to use it later when making
@@ -149,7 +150,7 @@ Http::FilterHeadersStatus CompressorFilter::decodeHeaders(Http::RequestHeaderMap
   }
 
   const auto& request_config = config_->requestDirectionConfig();
-  if (request_config.compressionEnabled() &&
+  if (!end_stream && request_config.compressionEnabled() &&
       !headers.getInline(request_content_encoding_handle.handle()) &&
       request_config.isMinimumContentLength(headers) &&
       request_config.isContentTypeAllowed(headers) && isTransferEncodingAllowed(headers)) {
@@ -200,12 +201,12 @@ Http::FilterHeadersStatus CompressorFilter::encodeHeaders(Http::ResponseHeaderMa
   const bool isCompressible = isEnabledAndContentLengthBigEnough &&
                               config.isContentTypeAllowed(headers) &&
                               !hasCacheControlNoTransform(headers) && isEtagAllowed(headers) &&
-                              !headers.getInline(content_encoding_handle.handle());
+                              !headers.getInline(response_content_encoding_handle.handle());
   if (!end_stream && isEnabledAndContentLengthBigEnough && isAcceptEncodingAllowed(headers) &&
       isCompressible && isTransferEncodingAllowed(headers)) {
     sanitizeEtagHeader(headers);
     headers.removeContentLength();
-    headers.setInline(content_encoding_handle.handle(), config_->contentEncoding());
+    headers.setInline(response_content_encoding_handle.handle(), config_->contentEncoding());
     config.stats().compressed_.inc();
     // Finally instantiate the compressor.
     response_compressor_ = config_->makeCompressor();

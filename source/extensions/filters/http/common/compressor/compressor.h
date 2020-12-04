@@ -132,8 +132,11 @@ public:
       return ResponseCompressorStats{RESPONSE_COMPRESSOR_STATS(POOL_COUNTER_PREFIX(scope, prefix))};
     }
 
+    // TODO(rojkov): delete this translation function once the deprecated fields
+    // are removed from envoy::extensions::filters::http::compressor::v3::Compressor.
     static const envoy::extensions::filters::http::compressor::v3::Compressor::CommonDirectionConfig
     commonConfig(const envoy::extensions::filters::http::compressor::v3::Compressor&);
+
     const bool disable_on_etag_header_;
     const bool remove_accept_encoding_header_;
     const ResponseCompressorStats response_stats_;

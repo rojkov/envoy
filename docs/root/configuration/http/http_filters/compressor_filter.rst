@@ -113,11 +113,11 @@ When request compression is *applied*:
 - *content-encoding* with the compression scheme used (e.g., ``gzip``) is added to
   request headers.
 
-Using different decompressors for requests and responses
+Using different compressors for requests and responses
 --------------------------------------------------------
 
 If different compression libraries are desired for requests and responses, it is possible to install
-multiple decompressor filters enabled only for requests or responses. For instance:
+multiple compressor filters enabled only for requests or responses. For instance:
 
 .. code-block:: yaml
 
@@ -179,7 +179,7 @@ with the following:
   not_compressed, Counter, Number of requests not compressed.
   total_uncompressed_bytes, Counter, The total uncompressed bytes of all the requests that were marked for compression.
   total_compressed_bytes, Counter, The total compressed bytes of all the requests that were marked for compression.
-  content_length_too_small, Counter, Number of requests that accepted gzip encoding but did not compress because the payload was too small.
+  content_length_too_small, Counter, Number of requests that accepted the compressor encoding but did not compress because the payload was too small.
 
 In addition to the statics common for requests and responses there are statistics
 specific to responses only:
@@ -190,8 +190,16 @@ specific to responses only:
 
   no_accept_header, Counter, Number of requests with no accept header sent.
   header_identity, Counter, Number of requests sent with "identity" set as the *accept-encoding*.
-  header_compressor_used, Counter, Number of requests sent with "gzip" set as the *accept-encoding*.
+  header_compressor_used, Counter, Number of requests sent with filter's configured encoding set as the *accept-encoding*.
   header_compressor_overshadowed, Counter, Number of requests skipped by this filter instance because they were handled by another filter in the same filter chain.
   header_wildcard, Counter, Number of requests sent with "\*" set as the *accept-encoding*.
   header_not_valid, Counter, Number of requests sent with a not valid *accept-encoding* header (aka "q=0" or an unsupported encoding type).
   not_compressed_etag, Counter, Number of requests that were not compressed due to the etag header. *disable_on_etag_header* must be turned on for this to happen.
+
+.. attention:
+
+   In case the compressor is not configured to compress responses with the field
+   `response_direction_config` of the :ref:`Compressor <envoy_v3_api_msg_extensions.filters.http.compressor.v3.Compressor>`
+   message the stats are rooted in the legacy tree
+   <stat_prefix>.compressor.<compressor_library.name>.<compressor_library_stat_prefix>.*, that is without
+   the direction prefix.
