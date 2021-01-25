@@ -19,7 +19,7 @@ public:
    * @param output_buffer supplies the buffer to output decompressed data.
    */
   virtual void decompress(const Buffer::Instance& input_buffer,
-                          Buffer::Instance& output_buffer) PURE;
+                          Buffer::Instance& output_buffer, const bool last) PURE;
 };
 
 using DecompressorPtr = std::unique_ptr<Decompressor>;

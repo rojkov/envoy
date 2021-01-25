@@ -42,7 +42,7 @@ void ZlibDecompressorImpl::init(int64_t window_bits) {
 }
 
 void ZlibDecompressorImpl::decompress(const Buffer::Instance& input_buffer,
-                                      Buffer::Instance& output_buffer) {
+                                      Buffer::Instance& output_buffer, const bool) {
   for (const Buffer::RawSlice& input_slice : input_buffer.getRawSlices()) {
     zstream_ptr_->avail_in = input_slice.len_;
     zstream_ptr_->next_in = static_cast<Bytef*>(input_slice.mem_);

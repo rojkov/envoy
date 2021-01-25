@@ -82,9 +82,9 @@ Http::FilterHeadersStatus DecompressorFilter::decodeHeaders(Http::RequestHeaderM
                              *decoder_callbacks_, headers);
 };
 
-Http::FilterDataStatus DecompressorFilter::decodeData(Buffer::Instance& data, bool) {
+Http::FilterDataStatus DecompressorFilter::decodeData(Buffer::Instance& data, bool end_stream) {
   return maybeDecompress(config_->requestDirectionConfig(), request_decompressor_,
-                         *decoder_callbacks_, data);
+                         *decoder_callbacks_, data, end_stream);
 }
 
 Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::ResponseHeaderMap& headers,
@@ -99,18 +99,19 @@ Http::FilterHeadersStatus DecompressorFilter::encodeHeaders(Http::ResponseHeader
                              *encoder_callbacks_, headers);
 }
 
-Http::FilterDataStatus DecompressorFilter::encodeData(Buffer::Instance& data, bool) {
+Http::FilterDataStatus DecompressorFilter::encodeData(Buffer::Instance& data, bool end_stream) {
   return maybeDecompress(config_->responseDirectionConfig(), response_decompressor_,
-                         *encoder_callbacks_, data);
+                         *encoder_callbacks_, data, end_stream);
 }
 
 Http::FilterDataStatus DecompressorFilter::maybeDecompress(
     const DecompressorFilterConfig::DirectionConfig& direction_config,
     const Compression::Decompressor::DecompressorPtr& decompressor,
-    Http::StreamFilterCallbacks& callbacks, Buffer::Instance& input_buffer) const {
+    Http::StreamFilterCallbacks& callbacks, Buffer::Instance& input_buffer,
+    const bool end_stream) const {
   if (decompressor) {
     Buffer::OwnedImpl output_buffer;
-    decompressor->decompress(input_buffer, output_buffer);
+    decompressor->decompress(input_buffer, output_buffer, end_stream);
 
     // Report decompression via stats and logging before modifying the input buffer.
     direction_config.stats().total_compressed_bytes_.add(input_buffer.length());

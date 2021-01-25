@@ -62,7 +62,7 @@ public:
   void init(int64_t window_bits);
 
   // Compression::Decompressor::Decompressor
-  void decompress(const Buffer::Instance& input_buffer, Buffer::Instance& output_buffer) override;
+  void decompress(const Buffer::Instance& input_buffer, Buffer::Instance& output_buffer, const bool last) override;
 
   // Flag to track whether error occurred during decompression.
   // When an error occurs, the error code (a negative int) will be stored in this variable.

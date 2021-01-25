@@ -121,11 +121,11 @@ public:
 
   // Http::StreamDecoderFilter
   Http::FilterHeadersStatus decodeHeaders(Http::RequestHeaderMap&, bool) override;
-  Http::FilterDataStatus decodeData(Buffer::Instance&, bool) override;
+  Http::FilterDataStatus decodeData(Buffer::Instance&, bool end_stream) override;
 
   // Http::StreamEncoderFilter
   Http::FilterHeadersStatus encodeHeaders(Http::ResponseHeaderMap&, bool) override;
-  Http::FilterDataStatus encodeData(Buffer::Instance&, bool) override;
+  Http::FilterDataStatus encodeData(Buffer::Instance&, bool end_stream) override;
 
 private:
   template <class HeaderType>
@@ -156,7 +156,8 @@ private:
   Http::FilterDataStatus
   maybeDecompress(const DecompressorFilterConfig::DirectionConfig& direction_config,
                   const Compression::Decompressor::DecompressorPtr& decompressor,
-                  Http::StreamFilterCallbacks& callbacks, Buffer::Instance& input_buffer) const;
+                  Http::StreamFilterCallbacks& callbacks, Buffer::Instance& input_buffer,
+                  const bool end_stream) const;
 
   // TODO(junr03): These can be shared between compressor and decompressor.
   template <Http::CustomInlineHeaderRegistry::Type Type>
