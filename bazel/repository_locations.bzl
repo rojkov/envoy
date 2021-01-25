@@ -476,7 +476,7 @@ DEPENDENCY_REPOSITORIES = dict(
     ),
     org_unicode_icuuc = dict(
         strip_prefix = "icu-release-64-2",
-        sha256 = "524960ac99d086cdb6988d2a92fc163436fd3c6ec0a84c475c6382fbf989be05",
+        sha256 = "65271a83fa81783d1272553f4564965ac2e32535a58b0b8141e9f4003afb0e3a",
         urls = ["https://github.com/unicode-org/icu/archive/release-64-2.tar.gz"],
         use_category = ["dataplane"],
         cpe = "cpe:2.3:a:icu-project:international_components_for_unicode",
