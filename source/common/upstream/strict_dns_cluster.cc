@@ -5,6 +5,8 @@
 #include "envoy/config/endpoint/v3/endpoint.pb.h"
 #include "envoy/config/endpoint/v3/endpoint_components.pb.h"
 
+#include "common/common/perf_annotation.h"
+
 namespace Envoy {
 namespace Upstream {
 
@@ -26,6 +28,7 @@ StrictDnsClusterImpl::StrictDnsClusterImpl(
   failure_backoff_strategy_ =
       Config::Utility::prepareDnsRefreshStrategy<envoy::config::cluster::v3::Cluster>(
           cluster, dns_refresh_rate_ms_.count(), factory_context.api().randomGenerator());
+  PERF_CLEAR();
 
   std::list<ResolveTargetPtr> resolve_targets;
   const auto& locality_lb_endpoints = load_assignment_.endpoints();
@@ -40,8 +43,10 @@ StrictDnsClusterImpl::StrictDnsClusterImpl(
 
       const std::string& url =
           fmt::format("tcp://{}:{}", socket_address.address(), socket_address.port_value());
+      PERF_OPERATION(op);
       resolve_targets.emplace_back(new ResolveTarget(*this, factory_context.dispatcher(), url,
                                                      locality_lb_endpoint, lb_endpoint));
+      PERF_RECORD(op, "done", "create ResolveTarget");
     }
   }
   resolve_targets_ = std::move(resolve_targets);
@@ -49,6 +54,7 @@ StrictDnsClusterImpl::StrictDnsClusterImpl(
 
   overprovisioning_factor_ = PROTOBUF_GET_WRAPPED_OR_DEFAULT(
       load_assignment_.policy(), overprovisioning_factor, kDefaultOverProvisioningFactor);
+  PERF_DUMP();
 }
 
 void StrictDnsClusterImpl::startPreInit() {

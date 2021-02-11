@@ -499,6 +499,7 @@ envoy_cc_library(
     deps = [
         ":cluster_factory_includes",
         ":upstream_includes",
+        "//source/common/common:perf_annotation_lib",
         "@envoy_api//envoy/config/cluster/v3:pkg_cc_proto",
         "@envoy_api//envoy/config/endpoint/v3:pkg_cc_proto",
     ],
