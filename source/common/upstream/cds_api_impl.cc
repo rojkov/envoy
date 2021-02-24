@@ -17,6 +17,8 @@
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/str_join.h"
 
+#include "common/common/perf_annotation.h"
+
 namespace Envoy {
 namespace Upstream {
 
@@ -62,6 +64,7 @@ void CdsApiImpl::onConfigUpdate(const std::vector<Config::DecodedResourceRef>& r
 void CdsApiImpl::onConfigUpdate(const std::vector<Config::DecodedResourceRef>& added_resources,
                                 const Protobuf::RepeatedPtrField<std::string>& removed_resources,
                                 const std::string& system_version_info) {
+  PERF_OPERATION(op);
   Config::ScopedResume maybe_resume_eds;
   if (cm_.adsMux()) {
     const auto type_urls =
@@ -75,6 +78,7 @@ void CdsApiImpl::onConfigUpdate(const std::vector<Config::DecodedResourceRef>& a
   std::vector<std::string> exception_msgs;
   absl::flat_hash_set<std::string> cluster_names(added_resources.size());
   bool any_applied = false;
+  PERF_RECORD(op, "before_add", "onConfigUpdate");
   for (const auto& resource : added_resources) {
     envoy::config::cluster::v3::Cluster cluster;
     try {
@@ -83,22 +87,26 @@ void CdsApiImpl::onConfigUpdate(const std::vector<Config::DecodedResourceRef>& a
         // NOTE: at this point, the first of these duplicates has already been successfully applied.
         throw EnvoyException(fmt::format("duplicate cluster {} found", cluster.name()));
       }
+      PERF_OPERATION(op1);
       if (cm_.addOrUpdateCluster(cluster, resource.get().version())) {
         any_applied = true;
         ENVOY_LOG(info, "cds: add/update cluster '{}'", cluster.name());
       } else {
         ENVOY_LOG(debug, "cds: add/update cluster '{}' skipped", cluster.name());
       }
+      PERF_RECORD(op1, "done", "addOrUpdateCluster");
     } catch (const EnvoyException& e) {
       exception_msgs.push_back(fmt::format("{}: {}", cluster.name(), e.what()));
     }
   }
+  PERF_RECORD(op, "after_add", "onConfigUpdate");
   for (const auto& resource_name : removed_resources) {
     if (cm_.removeCluster(resource_name)) {
       any_applied = true;
       ENVOY_LOG(info, "cds: remove cluster '{}'", resource_name);
     }
   }
+  PERF_RECORD(op, "after_remove", "onConfigUpdate");
 
   if (any_applied) {
     system_version_info_ = system_version_info;
@@ -108,6 +116,9 @@ void CdsApiImpl::onConfigUpdate(const std::vector<Config::DecodedResourceRef>& a
     throw EnvoyException(
         fmt::format("Error adding/updating cluster(s) {}", absl::StrJoin(exception_msgs, ", ")));
   }
+  PERF_RECORD(op, "done", "onConfigUpdate");
+  PERF_DUMP();
+  PERF_CLEAR();
 }
 
 void CdsApiImpl::onConfigUpdateFailed(Envoy::Config::ConfigUpdateFailureReason reason,

@@ -16,6 +16,7 @@
 #include "envoy/network/dns.h"
 #include "envoy/runtime/runtime.h"
 #include "envoy/stats/scope.h"
+#include "common/common/perf_annotation.h"
 
 #include "common/common/assert.h"
 #include "common/common/enum_to_int.h"
@@ -616,7 +617,9 @@ bool ClusterManagerImpl::addOrUpdateCluster(const envoy::config::cluster::v3::Cl
   const std::string& cluster_name = cluster.name();
   const auto existing_active_cluster = active_clusters_.find(cluster_name);
   const auto existing_warming_cluster = warming_clusters_.find(cluster_name);
+  PERF_OPERATION(op);
   const uint64_t new_hash = MessageUtil::hash(cluster);
+  PERF_RECORD(op, "done", "MessageUtil::hash");
   if ((existing_active_cluster != active_clusters_.end() &&
        existing_active_cluster->second->blockUpdate(new_hash)) ||
       (existing_warming_cluster != warming_clusters_.end() &&
