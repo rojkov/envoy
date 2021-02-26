@@ -97,6 +97,7 @@ void ClusterManagerInitHelper::addCluster(ClusterManagerCluster& cm_cluster) {
 void ClusterManagerInitHelper::onClusterInit(ClusterManagerCluster& cluster) {
   ASSERT(state_ != State::AllClustersInitialized);
   per_cluster_init_callback_(cluster);
+  ENVOY_LOG(debug, "removing cluster on cluster init");
   removeCluster(cluster);
 }
 
@@ -114,6 +115,11 @@ void ClusterManagerInitHelper::removeCluster(ClusterManagerCluster& cluster) {
     ASSERT(cluster.cluster().initializePhase() == Cluster::InitializePhase::Secondary);
     cluster_list = &secondary_init_clusters_;
   }
+
+  ENVOY_LOG(debug, "cm init: before remove: cluster={} primary={} secondary={}",
+            cluster.cluster().info()->name(), primary_init_clusters_.size(),
+            secondary_init_clusters_.size());
+
 
   // It is possible that the cluster we are removing has already been initialized, and is not
   // present in the initializer list. If so, this is fine.
@@ -634,6 +640,7 @@ bool ClusterManagerImpl::addOrUpdateCluster(const envoy::config::cluster::v3::Cl
     if (existing_active_cluster != active_clusters_.end()) {
       // The following init manager remove call is a NOP in the case we are already initialized.
       // It's just kept here to avoid additional logic.
+      ENVOY_LOG(debug, "NOP");
       init_helper_.removeCluster(*existing_active_cluster->second);
     }
     cm_stats_.cluster_modified_.inc();
@@ -689,11 +696,11 @@ bool ClusterManagerImpl::removeCluster(const std::string& cluster_name) {
   auto existing_active_cluster = active_clusters_.find(cluster_name);
   if (existing_active_cluster != active_clusters_.end() &&
       existing_active_cluster->second->added_via_api_) {
+    ENVOY_LOG(info, "removing cluster {}", cluster_name);
     removed = true;
     init_helper_.removeCluster(*existing_active_cluster->second);
     active_clusters_.erase(existing_active_cluster);
 
-    ENVOY_LOG(info, "removing cluster {}", cluster_name);
     tls_.runOnAllThreads([cluster_name](OptRef<ThreadLocalClusterManagerImpl> cluster_manager) {
       ASSERT(cluster_manager->thread_local_clusters_.count(cluster_name) == 1);
       ENVOY_LOG(debug, "removing TLS cluster {}", cluster_name);
@@ -708,6 +715,7 @@ bool ClusterManagerImpl::removeCluster(const std::string& cluster_name) {
   if (existing_warming_cluster != warming_clusters_.end() &&
       existing_warming_cluster->second->added_via_api_) {
     removed = true;
+    ENVOY_LOG(info, "removing warming cluster {}", cluster_name);
     init_helper_.removeCluster(*existing_warming_cluster->second);
     warming_clusters_.erase(existing_warming_cluster);
     ENVOY_LOG(info, "removing warming cluster {}", cluster_name);
