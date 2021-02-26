@@ -76,10 +76,12 @@ void ClusterManagerInitHelper::addCluster(ClusterManagerCluster& cm_cluster) {
   } else {
     ASSERT(cluster.initializePhase() == Cluster::InitializePhase::Secondary);
     // Remove the previous cluster before the cluster object is destroyed.
+    PERF_OPERATION(op);
     secondary_init_clusters_.remove_if(
         [name_to_remove = cluster.info()->name()](ClusterManagerCluster* cluster_iter) {
           return cluster_iter->cluster().info()->name() == name_to_remove;
         });
+    PERF_RECORD(op, "secondary_before_init", "ClusterManagerInitHelper::addCluster");
     secondary_init_clusters_.push_back(&cm_cluster);
     if (started_secondary_initialize_) {
       // This can happen if we get a second CDS update that adds new clusters after we have
