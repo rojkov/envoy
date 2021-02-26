@@ -130,7 +130,9 @@ void ClusterManagerInitHelper::removeCluster(ClusterManagerCluster& cluster) {
 
   // It is possible that the cluster we are removing has already been initialized, and is not
   // present in the initializer list. If so, this is fine.
-  cluster_list->erase(cluster.cluster().info()->name());
+  if (cluster_list->at(cluster.cluster().info()->name()) == &cluster) {
+    cluster_list->erase(cluster.cluster().info()->name());
+  }
   ENVOY_LOG(debug, "cm init: init complete: cluster={} primary={} secondary={}",
             cluster.cluster().info()->name(), primary_init_clusters_.size(),
             secondary_init_clusters_.size());
