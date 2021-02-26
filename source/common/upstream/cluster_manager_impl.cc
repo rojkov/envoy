@@ -161,8 +161,8 @@ void ClusterManagerInitHelper::initializeSecondaryClusters() {
   */
   for (auto iter = secondary_init_clusters_.begin(); iter != secondary_init_clusters_.end();) {
     ClusterManagerCluster* cluster = iter->second;
+    ENVOY_LOG(debug, "initializing secondary cluster {}", iter->first);
     ++iter;
-    ENVOY_LOG(debug, "initializing secondary cluster {}", cluster->cluster().info()->name());
     cluster->cluster().initialize([cluster, this] { onClusterInit(*cluster); });
   }
 }
