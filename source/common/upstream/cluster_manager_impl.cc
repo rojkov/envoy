@@ -152,9 +152,17 @@ void ClusterManagerInitHelper::initializeSecondaryClusters() {
     cluster->cluster().initialize([cluster, this] { onClusterInit(*cluster); });
   }
   */
+  /*
   for (auto const& pair : secondary_init_clusters_) {
     ClusterManagerCluster* cluster = pair.second;
     ENVOY_LOG(debug, "initializing secondary cluster {}", pair.first);
+    cluster->cluster().initialize([cluster, this] { onClusterInit(*cluster); });
+  }
+  */
+  for (auto iter = secondary_init_clusters_.begin(); iter != secondary_init_clusters_.end();) {
+    ClusterManagerCluster* cluster = iter->second;
+    ++iter;
+    ENVOY_LOG(debug, "initializing secondary cluster {}", cluster->cluster().info()->name());
     cluster->cluster().initialize([cluster, this] { onClusterInit(*cluster); });
   }
 }
