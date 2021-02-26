@@ -67,22 +67,28 @@ void ClusterManagerInitHelper::addCluster(ClusterManagerCluster& cm_cluster) {
   Cluster& cluster = cm_cluster.cluster();
   if (cluster.initializePhase() == Cluster::InitializePhase::Primary) {
     // Remove the previous cluster before the cluster object is destroyed.
+    /*
     primary_init_clusters_.remove_if(
         [name_to_remove = cluster.info()->name()](ClusterManagerCluster* cluster_iter) {
           return cluster_iter->cluster().info()->name() == name_to_remove;
         });
     primary_init_clusters_.push_back(&cm_cluster);
+    */
+    primary_init_clusters_.insert_or_assign(cm_cluster.cluster().info()->name(), &cm_cluster);
     cluster.initialize(initialize_cb);
   } else {
     ASSERT(cluster.initializePhase() == Cluster::InitializePhase::Secondary);
     // Remove the previous cluster before the cluster object is destroyed.
     PERF_OPERATION(op);
+    secondary_init_clusters_.insert_or_assign(cm_cluster.cluster().info()->name(), &cm_cluster);
+    /*
     secondary_init_clusters_.remove_if(
         [name_to_remove = cluster.info()->name()](ClusterManagerCluster* cluster_iter) {
           return cluster_iter->cluster().info()->name() == name_to_remove;
         });
+    */
     PERF_RECORD(op, "secondary_before_init", "ClusterManagerInitHelper::addCluster");
-    secondary_init_clusters_.push_back(&cm_cluster);
+    //secondary_init_clusters_.push_back(&cm_cluster);
     if (started_secondary_initialize_) {
       // This can happen if we get a second CDS update that adds new clusters after we have
       // already started secondary init. In this case, just immediately initialize.
@@ -108,7 +114,8 @@ void ClusterManagerInitHelper::removeCluster(ClusterManagerCluster& cluster) {
 
   // There is a remote edge case where we can remove a cluster via CDS that has not yet been
   // initialized. When called via the remove cluster API this code catches that case.
-  std::list<ClusterManagerCluster*>* cluster_list;
+  //std::list<ClusterManagerCluster*>* cluster_list;
+  absl::flat_hash_map<absl::string_view, ClusterManagerCluster*>* cluster_list;
   if (cluster.cluster().initializePhase() == Cluster::InitializePhase::Primary) {
     cluster_list = &primary_init_clusters_;
   } else {
@@ -123,7 +130,7 @@ void ClusterManagerInitHelper::removeCluster(ClusterManagerCluster& cluster) {
 
   // It is possible that the cluster we are removing has already been initialized, and is not
   // present in the initializer list. If so, this is fine.
-  cluster_list->remove(&cluster);
+  cluster_list->erase(cluster.cluster().info()->name());
   ENVOY_LOG(debug, "cm init: init complete: cluster={} primary={} secondary={}",
             cluster.cluster().info()->name(), primary_init_clusters_.size(),
             secondary_init_clusters_.size());
@@ -135,10 +142,17 @@ void ClusterManagerInitHelper::initializeSecondaryClusters() {
   // Cluster::initialize() method can modify the list of secondary_init_clusters_ to remove
   // the item currently being initialized, so we eschew range-based-for and do this complicated
   // dance to increment the iterator before calling initialize.
+  /*
   for (auto iter = secondary_init_clusters_.begin(); iter != secondary_init_clusters_.end();) {
     ClusterManagerCluster* cluster = *iter;
     ++iter;
     ENVOY_LOG(debug, "initializing secondary cluster {}", cluster->cluster().info()->name());
+    cluster->cluster().initialize([cluster, this] { onClusterInit(*cluster); });
+  }
+  */
+  for (auto const& pair : secondary_init_clusters_) {
+    ClusterManagerCluster* cluster = pair.second;
+    ENVOY_LOG(debug, "initializing secondary cluster {}", pair.first);
     cluster->cluster().initialize([cluster, this] { onClusterInit(*cluster); });
   }
 }
