@@ -3205,33 +3205,44 @@ TEST_F(ClusterManagerInitHelperTest, UpdateAlreadyInitialized) {
 
   ReadyWatcher primary_clusters_initialized;
   init_helper_.setPrimaryClustersInitializedCb(
-      [&]() -> void { primary_clusters_initialized.ready(); });
+      [&]() -> void { 
+      printf("primary_clusters_initialized.ready()\n"); 
+      primary_clusters_initialized.ready(); 
+      });
   ReadyWatcher cm_initialized;
-  init_helper_.setInitializedCb([&]() -> void { cm_initialized.ready(); });
+  printf("test:3210\n");
+  init_helper_.setInitializedCb([&]() -> void { printf("cm_initialized.ready()\n"); cm_initialized.ready(); });
 
   NiceMock<MockClusterManagerCluster> cluster1;
   ON_CALL(cluster1.cluster_, initializePhase())
       .WillByDefault(Return(Cluster::InitializePhase::Primary));
   EXPECT_CALL(cluster1.cluster_, initialize(_));
+  printf("test:3217\n");
   init_helper_.addCluster(cluster1);
 
   NiceMock<MockClusterManagerCluster> cluster2;
   ON_CALL(cluster2.cluster_, initializePhase())
       .WillByDefault(Return(Cluster::InitializePhase::Primary));
   EXPECT_CALL(cluster2.cluster_, initialize(_));
+  printf("test:3224\n");
   init_helper_.addCluster(cluster2);
 
+  printf("test:3227\n");
   init_helper_.onStaticLoadComplete();
 
   EXPECT_CALL(*this, onClusterInit(Ref(cluster1)));
+  printf("test:3231\n");
   cluster1.cluster_.initialize_callback_();
+  printf("test:3233\n");
   init_helper_.removeCluster(cluster1);
 
   EXPECT_CALL(*this, onClusterInit(Ref(cluster2)));
   EXPECT_CALL(primary_clusters_initialized, ready());
+  printf("test:3238\n");
   cluster2.cluster_.initialize_callback_();
 
   EXPECT_CALL(cm_initialized, ready());
+  printf("test:3242\n");
   init_helper_.startInitializingSecondaryClusters();
 }
 
