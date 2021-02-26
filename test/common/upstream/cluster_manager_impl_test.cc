@@ -3231,7 +3231,7 @@ TEST_F(ClusterManagerInitHelperTest, UpdateAlreadyInitialized) {
   init_helper_.onStaticLoadComplete();
 
   EXPECT_CALL(*this, onClusterInit(Ref(cluster1)));
-  printf("test:3231\n");
+  printf("test:3231 %p %p\n", &cluster1, &cluster2);
   cluster1.cluster_.initialize_callback_();
   printf("test:3233\n");
   init_helper_.removeCluster(cluster1);
